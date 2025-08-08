@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Building2, TrendingUp, DollarSign, Users, Star, CheckCircle, Phone, Mail, MapPin, ArrowRight, Shield, Clock, Award } from 'lucide-react'
+import { Building2, TrendingUp, DollarSign, Users, Star, CheckCircle, Phone, Mail, MapPin, ArrowRight, Shield, Clock, Award, MessageCircle } from 'lucide-react'
 import Link from "next/link"
 import Image from "next/image"
+import { EnquiryForm } from "@/components/enquiry-form"
 
 export default function MSMEBazaarLanding() {
   return (
@@ -411,6 +412,36 @@ export default function MSMEBazaarLanding() {
             </div>
           </div>
         </section>
+
+        {/* Enquiry Form Section */}
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-50">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
+              <div className="space-y-2">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">
+                  Have Questions? Let's Talk!
+                </h2>
+                <p className="max-w-[900px] text-gray-600 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Our MSME experts are here to help you grow your business. Send us your enquiry and we'll get back to you within 24 hours.
+                </p>
+              </div>
+            </div>
+            
+            <div className="max-w-2xl mx-auto">
+              <Card className="shadow-lg border-0">
+                <CardHeader>
+                  <CardTitle className="text-2xl text-center">Send us an Enquiry</CardTitle>
+                  <CardDescription className="text-center">
+                    Fill out the form below and our team will contact you soon
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <EnquiryForm />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Footer */}
@@ -448,20 +479,28 @@ export default function MSMEBazaarLanding() {
             </div>
             
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold">Support</h4>
+              <h4 className="text-sm font-semibold">Support & Contact</h4>
               <div className="space-y-2 text-sm">
-                <Link href="#" className="flex items-center gap-2 text-gray-600 hover:text-blue-600">
-                  <Phone className="h-4 w-4" />
-                  +91 98765 43210
-                </Link>
-                <Link href="mailto:support@msmebazaar.com" className="flex items-center gap-2 text-gray-600 hover:text-blue-600">
+                <Link href="mailto:support@msmebazaar.in" className="flex items-center gap-2 text-gray-600 hover:text-blue-600">
                   <Mail className="h-4 w-4" />
-                  support@msmebazaar.com
+                  support@msmebazaar.in
+                </Link>
+                <Link href="tel:+919999999999" className="flex items-center gap-2 text-gray-600 hover:text-blue-600">
+                  <Phone className="h-4 w-4" />
+                  +91 99999 99999
                 </Link>
                 <Link href="#" className="flex items-center gap-2 text-gray-600 hover:text-blue-600">
                   <MapPin className="h-4 w-4" />
                   Mumbai, India
                 </Link>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full mt-2 border-blue-200 text-blue-600 hover:bg-blue-50"
+                  onClick={() => window.open('https://calendly.com/msmebazaar', '_blank')}
+                >
+                  📅 Schedule a Call
+                </Button>
               </div>
             </div>
           </div>
@@ -484,6 +523,21 @@ export default function MSMEBazaarLanding() {
           </div>
         </div>
       </footer>
+      {/* Floating WhatsApp Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button 
+          size="lg" 
+          className="rounded-full bg-green-500 hover:bg-green-600 shadow-lg h-14 w-14 p-0 animate-bounce"
+          onClick={() => {
+            const message = encodeURIComponent("Hi, I need help on MSMEBazaar.")
+            const whatsappUrl = `https://wa.me/919999999999?text=${message}`
+            window.open(whatsappUrl, '_blank')
+          }}
+          title="Chat with us on WhatsApp"
+        >
+          <MessageCircle className="h-6 w-6" />
+        </Button>
+      </div>
     </div>
   )
 }
