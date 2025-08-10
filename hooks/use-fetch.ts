@@ -4,51 +4,48 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { useToast } from "@/hooks/use-toast"
 
 export interface FetchOptions extends RequestInit {
-  baseURL?: string
   timeout?: number
   retries?: number
   retryDelay?: number
-  skipErrorToast?: boolean
+  showErrorToast?: boolean
+  showSuccessToast?: boolean
+  successMessage?: string
 }
 
 export interface FetchState<T> {
   data: T | null
   loading: boolean
   error: string | null
-  status: number | null
+  status: "idle" | "loading" | "success" | "error"
 }
 
-export interface FetchResult<T> extends FetchState<T> {
+export interface FetchReturn<T> extends FetchState<T> {
   refetch: () => Promise<void>
-  mutate: (newData: T | ((prevData: T | null) => T)) => void
+  mutate: (newData: T) => void
   reset: () => void
 }
 
 const DEFAULT_OPTIONS: FetchOptions = {
-  timeout: 30000,
+  timeout: 10000,
   retries: 3,
   retryDelay: 1000,
-  skipErrorToast: false,
+  showErrorToast: true,
+  showSuccessToast: false,
 }
 
-export function useFetch<T = any>(url: string | null, options: FetchOptions = {}): FetchResult<T> {
+export function useFetch<T = any>(url: string | null, options: FetchOptions = {}): FetchReturn<T> {
   const { toast } = useToast()
   const [state, setState] = useState<FetchState<T>>({
     data: null,
     loading: false,
     error: null,
-    status: null,
+    status: "idle",
   })
 
   const abortControllerRef = useRef<AbortController | null>(null)
   const optionsRef = useRef({ ...DEFAULT_OPTIONS, ...options })
 
-  // Update options ref when options change
-  useEffect(() => {
-    optionsRef.current = { ...DEFAULT_OPTIONS, ...options }
-  }, [options])
-
-  const fetchData = useCallback(async (): Promise<void> => {
+  const fetchData = useCallback(async () => {
     if (!url) return
 
     // Cancel previous request
@@ -57,41 +54,25 @@ export function useFetch<T = any>(url: string | null, options: FetchOptions = {}
     }
 
     abortControllerRef.current = new AbortController()
-    const { signal } = abortControllerRef.current
+    const { timeout, retries, retryDelay, showErrorToast, showSuccessToast, successMessage, ...fetchOptions } =
+      optionsRef.current
 
-    setState((prev) => ({ ...prev, loading: true, error: null }))
-
-    const {
-      baseURL = process.env.NEXT_PUBLIC_API_URL || "",
-      timeout,
-      retries,
-      retryDelay,
-      skipErrorToast,
-      ...fetchOptions
-    } = optionsRef.current
-
-    const fullUrl = url.startsWith("http") ? url : `${baseURL}${url}`
+    setState((prev) => ({ ...prev, loading: true, error: null, status: "loading" }))
 
     let lastError: Error | null = null
 
     for (let attempt = 0; attempt <= retries!; attempt++) {
       try {
-        // Create timeout promise
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Request timeout")), timeout)
-        })
+        const timeoutId = setTimeout(() => {
+          abortControllerRef.current?.abort()
+        }, timeout)
 
-        // Make the fetch request
-        const fetchPromise = fetch(fullUrl, {
+        const response = await fetch(url, {
           ...fetchOptions,
-          signal,
-          headers: {
-            "Content-Type": "application/json",
-            ...fetchOptions.headers,
-          },
+          signal: abortControllerRef.current.signal,
         })
 
-        const response = await Promise.race([fetchPromise, timeoutPromise])
+        clearTimeout(timeoutId)
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -103,48 +84,47 @@ export function useFetch<T = any>(url: string | null, options: FetchOptions = {}
         if (contentType?.includes("application/json")) {
           data = await response.json()
         } else {
-          data = (await response.text()) as unknown as T
+          data = (await response.text()) as T
         }
 
         setState({
           data,
           loading: false,
           error: null,
-          status: response.status,
+          status: "success",
         })
+
+        if (showSuccessToast && successMessage) {
+          toast({
+            title: "Success",
+            description: successMessage,
+          })
+        }
 
         return
       } catch (error) {
         lastError = error as Error
 
-        // Don't retry if request was aborted
-        if (signal.aborted) {
-          return
+        if (error instanceof Error && error.name === "AbortError") {
+          return // Request was cancelled
         }
 
-        // Don't retry on client errors (4xx)
-        if (error instanceof Error && error.message.includes("HTTP 4")) {
-          break
-        }
-
-        // Wait before retrying (except on last attempt)
         if (attempt < retries!) {
-          await new Promise((resolve) => setTimeout(resolve, retryDelay! * (attempt + 1)))
+          await new Promise((resolve) => setTimeout(resolve, retryDelay! * Math.pow(2, attempt)))
         }
       }
     }
 
     // All retries failed
     const errorMessage = lastError?.message || "An unexpected error occurred"
-
     setState({
       data: null,
       loading: false,
       error: errorMessage,
-      status: null,
+      status: "error",
     })
 
-    if (!skipErrorToast) {
+    if (optionsRef.current.showErrorToast) {
       toast({
         title: "Error",
         description: errorMessage,
@@ -153,30 +133,26 @@ export function useFetch<T = any>(url: string | null, options: FetchOptions = {}
     }
   }, [url, toast])
 
-  const mutate = useCallback((newData: T | ((prevData: T | null) => T)) => {
+  const mutate = useCallback((newData: T) => {
     setState((prev) => ({
       ...prev,
-      data: typeof newData === "function" ? (newData as (prevData: T | null) => T)(prev.data) : newData,
+      data: newData,
+      status: "success",
     }))
   }, [])
 
   const reset = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
     setState({
       data: null,
       loading: false,
       error: null,
-      status: null,
+      status: "idle",
     })
   }, [])
 
-  // Initial fetch
   useEffect(() => {
     fetchData()
 
-    // Cleanup on unmount
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort()
@@ -192,267 +168,81 @@ export function useFetch<T = any>(url: string | null, options: FetchOptions = {}
   }
 }
 
-// Specialized hooks for common HTTP methods
-export function useGet<T = any>(url: string | null, options?: FetchOptions) {
+// Specialized hooks for different HTTP methods
+export function useGet<T = any>(url: string | null, options?: Omit<FetchOptions, "method">) {
   return useFetch<T>(url, { ...options, method: "GET" })
 }
 
-export function usePost<T = any>() {
-  const { toast } = useToast()
-  const [state, setState] = useState<FetchState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-    status: null,
+export function usePost<T = any>(url: string | null, body?: any, options?: Omit<FetchOptions, "method" | "body">) {
+  const [postUrl, setPostUrl] = useState<string | null>(null)
+  const [postBody, setPostBody] = useState<any>(null)
+
+  const result = useFetch<T>(postUrl, {
+    ...options,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+    body: postBody ? JSON.stringify(postBody) : undefined,
   })
 
-  const post = useCallback(
-    async (url: string, body?: any, options: FetchOptions = {}): Promise<T | null> => {
-      setState((prev) => ({ ...prev, loading: true, error: null }))
-
-      const {
-        baseURL = process.env.NEXT_PUBLIC_API_URL || "",
-        timeout = 30000,
-        skipErrorToast = false,
-        ...fetchOptions
-      } = options
-
-      const fullUrl = url.startsWith("http") ? url : `${baseURL}${url}`
-
-      try {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Request timeout")), timeout)
-        })
-
-        const fetchPromise = fetch(fullUrl, {
-          ...fetchOptions,
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...fetchOptions.headers,
-          },
-          body: body ? JSON.stringify(body) : undefined,
-        })
-
-        const response = await Promise.race([fetchPromise, timeoutPromise])
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-
-        const contentType = response.headers.get("content-type")
-        let data: T
-
-        if (contentType?.includes("application/json")) {
-          data = await response.json()
-        } else {
-          data = (await response.text()) as unknown as T
-        }
-
-        setState({
-          data,
-          loading: false,
-          error: null,
-          status: response.status,
-        })
-
-        return data
-      } catch (error) {
-        const errorMessage = (error as Error).message || "An unexpected error occurred"
-
-        setState({
-          data: null,
-          loading: false,
-          error: errorMessage,
-          status: null,
-        })
-
-        if (!skipErrorToast) {
-          toast({
-            title: "Error",
-            description: errorMessage,
-            variant: "destructive",
-          })
-        }
-
-        return null
-      }
+  const execute = useCallback(
+    (executeBody?: any) => {
+      setPostBody(executeBody || body)
+      setPostUrl(url)
     },
-    [toast],
+    [url, body],
   )
 
-  return { ...state, post }
+  return {
+    ...result,
+    execute,
+  }
 }
 
-export function usePut<T = any>() {
-  const { toast } = useToast()
-  const [state, setState] = useState<FetchState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-    status: null,
+export function usePut<T = any>(url: string | null, body?: any, options?: Omit<FetchOptions, "method" | "body">) {
+  const [putUrl, setPutUrl] = useState<string | null>(null)
+  const [putBody, setPutBody] = useState<any>(null)
+
+  const result = useFetch<T>(putUrl, {
+    ...options,
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+    body: putBody ? JSON.stringify(putBody) : undefined,
   })
 
-  const put = useCallback(
-    async (url: string, body?: any, options: FetchOptions = {}): Promise<T | null> => {
-      setState((prev) => ({ ...prev, loading: true, error: null }))
-
-      const {
-        baseURL = process.env.NEXT_PUBLIC_API_URL || "",
-        timeout = 30000,
-        skipErrorToast = false,
-        ...fetchOptions
-      } = options
-
-      const fullUrl = url.startsWith("http") ? url : `${baseURL}${url}`
-
-      try {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Request timeout")), timeout)
-        })
-
-        const fetchPromise = fetch(fullUrl, {
-          ...fetchOptions,
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...fetchOptions.headers,
-          },
-          body: body ? JSON.stringify(body) : undefined,
-        })
-
-        const response = await Promise.race([fetchPromise, timeoutPromise])
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-
-        const contentType = response.headers.get("content-type")
-        let data: T
-
-        if (contentType?.includes("application/json")) {
-          data = await response.json()
-        } else {
-          data = (await response.text()) as unknown as T
-        }
-
-        setState({
-          data,
-          loading: false,
-          error: null,
-          status: response.status,
-        })
-
-        return data
-      } catch (error) {
-        const errorMessage = (error as Error).message || "An unexpected error occurred"
-
-        setState({
-          data: null,
-          loading: false,
-          error: errorMessage,
-          status: null,
-        })
-
-        if (!skipErrorToast) {
-          toast({
-            title: "Error",
-            description: errorMessage,
-            variant: "destructive",
-          })
-        }
-
-        return null
-      }
+  const execute = useCallback(
+    (executeBody?: any) => {
+      setPutBody(executeBody || body)
+      setPutUrl(url)
     },
-    [toast],
+    [url, body],
   )
 
-  return { ...state, put }
+  return {
+    ...result,
+    execute,
+  }
 }
 
-export function useDelete<T = any>() {
-  const { toast } = useToast()
-  const [state, setState] = useState<FetchState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-    status: null,
+export function useDelete<T = any>(url: string | null, options?: Omit<FetchOptions, "method">) {
+  const [deleteUrl, setDeleteUrl] = useState<string | null>(null)
+
+  const result = useFetch<T>(deleteUrl, {
+    ...options,
+    method: "DELETE",
   })
 
-  const del = useCallback(
-    async (url: string, options: FetchOptions = {}): Promise<T | null> => {
-      setState((prev) => ({ ...prev, loading: true, error: null }))
+  const execute = useCallback(() => {
+    setDeleteUrl(url)
+  }, [url])
 
-      const {
-        baseURL = process.env.NEXT_PUBLIC_API_URL || "",
-        timeout = 30000,
-        skipErrorToast = false,
-        ...fetchOptions
-      } = options
-
-      const fullUrl = url.startsWith("http") ? url : `${baseURL}${url}`
-
-      try {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Request timeout")), timeout)
-        })
-
-        const fetchPromise = fetch(fullUrl, {
-          ...fetchOptions,
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            ...fetchOptions.headers,
-          },
-        })
-
-        const response = await Promise.race([fetchPromise, timeoutPromise])
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-
-        const contentType = response.headers.get("content-type")
-        let data: T
-
-        if (contentType?.includes("application/json")) {
-          data = await response.json()
-        } else {
-          data = (await response.text()) as unknown as T
-        }
-
-        setState({
-          data,
-          loading: false,
-          error: null,
-          status: response.status,
-        })
-
-        return data
-      } catch (error) {
-        const errorMessage = (error as Error).message || "An unexpected error occurred"
-
-        setState({
-          data: null,
-          loading: false,
-          error: errorMessage,
-          status: null,
-        })
-
-        if (!skipErrorToast) {
-          toast({
-            title: "Error",
-            description: errorMessage,
-            variant: "destructive",
-          })
-        }
-
-        return null
-      }
-    },
-    [toast],
-  )
-
-  return { ...state, delete: del }
+  return {
+    ...result,
+    execute,
+  }
 }
