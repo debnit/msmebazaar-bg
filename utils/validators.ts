@@ -1,478 +1,390 @@
 import { REGEX_PATTERNS, ERROR_MESSAGES } from "./constants"
 
-// Base validation result interface
-export interface ValidationResult {
+// Base validator type
+export type ValidatorResult = {
   isValid: boolean
   error?: string
 }
 
-// Email validation
-export function validateEmail(email: string): ValidationResult {
-  if (!email) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
+export type ValidatorFunction = (value: any) => ValidatorResult
 
-  if (!REGEX_PATTERNS.EMAIL.test(email)) {
-    return { isValid: false, error: ERROR_MESSAGES.INVALID_EMAIL }
-  }
+// Core validation functions
+export const validators = {
+  required:
+    (message?: string): ValidatorFunction =>
+    (value: any) => ({
+      isValid: value !== null && value !== undefined && value !== "",
+      error: message || ERROR_MESSAGES.REQUIRED_FIELD,
+    }),
 
-  return { isValid: true }
+  email:
+    (message?: string): ValidatorFunction =>
+    (value: string) => ({
+      isValid: !value || REGEX_PATTERNS.EMAIL.test(value),
+      error: message || ERROR_MESSAGES.INVALID_EMAIL,
+    }),
+
+  phone:
+    (message?: string): ValidatorFunction =>
+    (value: string) => ({
+      isValid: !value || REGEX_PATTERNS.PHONE.test(value),
+      error: message || ERROR_MESSAGES.INVALID_PHONE,
+    }),
+
+  password:
+    (message?: string): ValidatorFunction =>
+    (value: string) => ({
+      isValid: !value || REGEX_PATTERNS.PASSWORD.test(value),
+      error: message || ERROR_MESSAGES.INVALID_PASSWORD,
+    }),
+
+  minLength:
+    (min: number, message?: string): ValidatorFunction =>
+    (value: string) => ({
+      isValid: !value || value.length >= min,
+      error: message || `Minimum ${min} characters required`,
+    }),
+
+  maxLength:
+    (max: number, message?: string): ValidatorFunction =>
+    (value: string) => ({
+      isValid: !value || value.length <= max,
+      error: message || `Maximum ${max} characters allowed`,
+    }),
+
+  min:
+    (min: number, message?: string): ValidatorFunction =>
+    (value: number) => ({
+      isValid: value === null || value === undefined || value >= min,
+      error: message || `Minimum value is ${min}`,
+    }),
+
+  max:
+    (max: number, message?: string): ValidatorFunction =>
+    (value: number) => ({
+      isValid: value === null || value === undefined || value <= max,
+      error: message || `Maximum value is ${max}`,
+    }),
+
+  url:
+    (message?: string): ValidatorFunction =>
+    (value: string) => ({
+      isValid: !value || REGEX_PATTERNS.URL.test(value),
+      error: message || ERROR_MESSAGES.INVALID_URL,
+    }),
+
+  // Indian business specific validators
+  gst:
+    (message?: string): ValidatorFunction =>
+    (value: string) => {
+      if (!value) return { isValid: true }
+
+      const isValidFormat = REGEX_PATTERNS.GST.test(value)
+      if (!isValidFormat) {
+        return {
+          isValid: false,
+          error: message || ERROR_MESSAGES.INVALID_GST,
+        }
+      }
+
+      // Additional GST checksum validation
+      const gstRegex = /^([0-9]{2})([A-Z]{5})([0-9]{4})([A-Z]{1})([1-9A-Z]{1})([Z]{1})([0-9A-Z]{1})$/
+      const match = value.match(gstRegex)
+
+      if (!match) {
+        return {
+          isValid: false,
+          error: message || ERROR_MESSAGES.INVALID_GST,
+        }
+      }
+
+      return { isValid: true }
+    },
+
+  pan:
+    (message?: string): ValidatorFunction =>
+    (value: string) => ({
+      isValid: !value || REGEX_PATTERNS.PAN.test(value),
+      error: message || ERROR_MESSAGES.INVALID_PAN,
+    }),
+
+  aadhar:
+    (message?: string): ValidatorFunction =>
+    (value: string) => {
+      if (!value) return { isValid: true }
+
+      // Remove spaces and check format
+      const cleanAadhar = value.replace(/\s/g, "")
+      const isValidFormat = REGEX_PATTERNS.AADHAR.test(cleanAadhar)
+
+      if (!isValidFormat) {
+        return {
+          isValid: false,
+          error: message || ERROR_MESSAGES.INVALID_AADHAR,
+        }
+      }
+
+      // Verhoeff algorithm for Aadhar validation
+      const verhoeffCheck = (num: string): boolean => {
+        const d = [
+          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+          [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
+          [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
+          [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
+          [4, 0, 1, 2, 3, 9, 5, 6, 7, 8],
+          [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
+          [6, 5, 9, 8, 7, 1, 0, 4, 3, 2],
+          [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
+          [8, 7, 6, 5, 9, 3, 2, 1, 0, 4],
+          [9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+        ]
+
+        const p = [
+          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+          [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
+          [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
+          [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
+          [9, 4, 5, 3, 1, 2, 6, 8, 7, 0],
+          [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
+          [2, 7, 9, 3, 8, 0, 6, 4, 1, 5],
+          [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
+        ]
+
+        let c = 0
+        const reversedNum = num.split("").reverse()
+
+        for (let i = 0; i < reversedNum.length; i++) {
+          c = d[c][p[i % 8][Number.parseInt(reversedNum[i])]]
+        }
+
+        return c === 0
+      }
+
+      return {
+        isValid: verhoeffCheck(cleanAadhar),
+        error: message || ERROR_MESSAGES.INVALID_AADHAR,
+      }
+    },
+
+  ifsc:
+    (message?: string): ValidatorFunction =>
+    (value: string) => ({
+      isValid: !value || REGEX_PATTERNS.IFSC.test(value),
+      error: message || ERROR_MESSAGES.INVALID_IFSC,
+    }),
+
+  pincode:
+    (message?: string): ValidatorFunction =>
+    (value: string) => ({
+      isValid: !value || REGEX_PATTERNS.PINCODE.test(value),
+      error: message || ERROR_MESSAGES.INVALID_PINCODE,
+    }),
+
+  businessName:
+    (message?: string): ValidatorFunction =>
+    (value: string) => {
+      if (!value) return { isValid: true }
+
+      // Check for minimum length and valid characters
+      const isValidLength = value.length >= 2 && value.length <= 100
+      const hasValidChars = /^[a-zA-Z0-9\s&.-]+$/.test(value)
+      const hasAlphaNumeric = /[a-zA-Z0-9]/.test(value)
+
+      return {
+        isValid: isValidLength && hasValidChars && hasAlphaNumeric,
+        error: message || "Business name must be 2-100 characters with valid business characters",
+      }
+    },
+
+  // Date validators
+  pastDate:
+    (message?: string): ValidatorFunction =>
+    (value: string | Date) => {
+      if (!value) return { isValid: true }
+
+      const date = new Date(value)
+      const today = new Date()
+      today.setHours(23, 59, 59, 999)
+
+      return {
+        isValid: date < today,
+        error: message || "Date must be in the past",
+      }
+    },
+
+  futureDate:
+    (message?: string): ValidatorFunction =>
+    (value: string | Date) => {
+      if (!value) return { isValid: true }
+
+      const date = new Date(value)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      return {
+        isValid: date > today,
+        error: message || "Date must be in the future",
+      }
+    },
+
+  minAge:
+    (minAge: number, message?: string): ValidatorFunction =>
+    (value: string | Date) => {
+      if (!value) return { isValid: true }
+
+      const birthDate = new Date(value)
+      const today = new Date()
+      const age = today.getFullYear() - birthDate.getFullYear()
+      const monthDiff = today.getMonth() - birthDate.getMonth()
+
+      const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age
+
+      return {
+        isValid: actualAge >= minAge,
+        error: message || `Minimum age required is ${minAge} years`,
+      }
+    },
+
+  // File validators
+  fileSize:
+    (maxSizeInMB: number, message?: string): ValidatorFunction =>
+    (file: File) => {
+      if (!file) return { isValid: true }
+
+      const maxSizeInBytes = maxSizeInMB * 1024 * 1024
+
+      return {
+        isValid: file.size <= maxSizeInBytes,
+        error: message || `File size must be less than ${maxSizeInMB}MB`,
+      }
+    },
+
+  fileType:
+    (allowedTypes: string[], message?: string): ValidatorFunction =>
+    (file: File) => {
+      if (!file) return { isValid: true }
+
+      const fileExtension = file.name.split(".").pop()?.toLowerCase()
+
+      return {
+        isValid: allowedTypes.includes(fileExtension || ""),
+        error: message || `Allowed file types: ${allowedTypes.join(", ")}`,
+      }
+    },
+
+  // Amount validators
+  amount:
+    (message?: string): ValidatorFunction =>
+    (value: number | string) => {
+      if (!value) return { isValid: true }
+
+      const numValue = typeof value === "string" ? Number.parseFloat(value) : value
+
+      return {
+        isValid: !isNaN(numValue) && numValue > 0,
+        error: message || "Please enter a valid amount",
+      }
+    },
+
+  percentage:
+    (message?: string): ValidatorFunction =>
+    (value: number | string) => {
+      if (!value) return { isValid: true }
+
+      const numValue = typeof value === "string" ? Number.parseFloat(value) : value
+
+      return {
+        isValid: !isNaN(numValue) && numValue >= 0 && numValue <= 100,
+        error: message || "Percentage must be between 0 and 100",
+      }
+    },
+
+  // Custom match validator
+  match:
+    (otherValue: any, fieldName: string, message?: string): ValidatorFunction =>
+    (value: any) => ({
+      isValid: value === otherValue,
+      error: message || `Must match ${fieldName}`,
+    }),
 }
 
-// Phone number validation (Indian format)
-export function validatePhone(phone: string): ValidationResult {
-  if (!phone) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  // Remove all non-digit characters
-  const cleanPhone = phone.replace(/\D/g, "")
-
-  if (!REGEX_PATTERNS.PHONE.test(cleanPhone)) {
-    return { isValid: false, error: ERROR_MESSAGES.INVALID_PHONE }
-  }
-
-  return { isValid: true }
-}
-
-// Password validation
-export function validatePassword(password: string): ValidationResult {
-  if (!password) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  if (password.length < 8) {
-    return { isValid: false, error: "Password must be at least 8 characters long" }
-  }
-
-  if (!REGEX_PATTERNS.PASSWORD.test(password)) {
-    return { isValid: false, error: ERROR_MESSAGES.WEAK_PASSWORD }
-  }
-
-  return { isValid: true }
-}
-
-// Confirm password validation
-export function validateConfirmPassword(password: string, confirmPassword: string): ValidationResult {
-  if (!confirmPassword) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  if (password !== confirmPassword) {
-    return { isValid: false, error: ERROR_MESSAGES.PASSWORD_MISMATCH }
-  }
-
-  return { isValid: true }
-}
-
-// GST number validation
-export function validateGST(gst: string): ValidationResult {
-  if (!gst) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  const cleanGST = gst.replace(/\s/g, "").toUpperCase()
-
-  if (!REGEX_PATTERNS.GST.test(cleanGST)) {
-    return { isValid: false, error: ERROR_MESSAGES.INVALID_GST }
-  }
-
-  return { isValid: true }
-}
-
-// PAN number validation
-export function validatePAN(pan: string): ValidationResult {
-  if (!pan) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  const cleanPAN = pan.replace(/\s/g, "").toUpperCase()
-
-  if (!REGEX_PATTERNS.PAN.test(cleanPAN)) {
-    return { isValid: false, error: ERROR_MESSAGES.INVALID_PAN }
-  }
-
-  return { isValid: true }
-}
-
-// Pincode validation
-export function validatePincode(pincode: string): ValidationResult {
-  if (!pincode) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  const cleanPincode = pincode.replace(/\D/g, "")
-
-  if (!REGEX_PATTERNS.PINCODE.test(cleanPincode)) {
-    return { isValid: false, error: "Please enter a valid 6-digit pincode" }
-  }
-
-  return { isValid: true }
-}
-
-// IFSC code validation
-export function validateIFSC(ifsc: string): ValidationResult {
-  if (!ifsc) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  const cleanIFSC = ifsc.replace(/\s/g, "").toUpperCase()
-
-  if (!REGEX_PATTERNS.IFSC.test(cleanIFSC)) {
-    return { isValid: false, error: "Please enter a valid IFSC code" }
-  }
-
-  return { isValid: true }
-}
-
-// Aadhar number validation
-export function validateAadhar(aadhar: string): ValidationResult {
-  if (!aadhar) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  const cleanAadhar = aadhar.replace(/\D/g, "")
-
-  if (!REGEX_PATTERNS.AADHAR.test(cleanAadhar)) {
-    return { isValid: false, error: "Please enter a valid 12-digit Aadhar number" }
-  }
-
-  return { isValid: true }
-}
-
-// Required field validation
-export function validateRequired(value: any, fieldName?: string): ValidationResult {
-  if (value === null || value === undefined || value === "" || (Array.isArray(value) && value.length === 0)) {
-    return {
-      isValid: false,
-      error: fieldName ? `${fieldName} is required` : ERROR_MESSAGES.REQUIRED_FIELD,
-    }
-  }
-
-  return { isValid: true }
-}
-
-// String length validation
-export function validateLength(value: string, min?: number, max?: number, fieldName?: string): ValidationResult {
-  if (!value) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  if (min && value.length < min) {
-    return {
-      isValid: false,
-      error: `${fieldName || "Field"} must be at least ${min} characters long`,
-    }
-  }
-
-  if (max && value.length > max) {
-    return {
-      isValid: false,
-      error: `${fieldName || "Field"} must be no more than ${max} characters long`,
-    }
-  }
-
-  return { isValid: true }
-}
-
-// Number range validation
-export function validateRange(value: number, min?: number, max?: number, fieldName?: string): ValidationResult {
-  if (value === null || value === undefined) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  if (min !== undefined && value < min) {
-    return {
-      isValid: false,
-      error: `${fieldName || "Value"} must be at least ${min}`,
-    }
-  }
-
-  if (max !== undefined && value > max) {
-    return {
-      isValid: false,
-      error: `${fieldName || "Value"} must be no more than ${max}`,
-    }
-  }
-
-  return { isValid: true }
-}
-
-// URL validation
-export function validateURL(url: string): ValidationResult {
-  if (!url) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  try {
-    new URL(url)
-    return { isValid: true }
-  } catch {
-    return { isValid: false, error: "Please enter a valid URL" }
-  }
-}
-
-// Date validation
-export function validateDate(date: string | Date, fieldName?: string): ValidationResult {
-  if (!date) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  const dateObj = typeof date === "string" ? new Date(date) : date
-
-  if (isNaN(dateObj.getTime())) {
-    return {
-      isValid: false,
-      error: `Please enter a valid ${fieldName || "date"}`,
-    }
-  }
-
-  return { isValid: true }
-}
-
-// Future date validation
-export function validateFutureDate(date: string | Date, fieldName?: string): ValidationResult {
-  const dateValidation = validateDate(date, fieldName)
-  if (!dateValidation.isValid) {
-    return dateValidation
-  }
-
-  const dateObj = typeof date === "string" ? new Date(date) : date
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  if (dateObj <= today) {
-    return {
-      isValid: false,
-      error: `${fieldName || "Date"} must be in the future`,
-    }
-  }
-
-  return { isValid: true }
-}
-
-// Past date validation
-export function validatePastDate(date: string | Date, fieldName?: string): ValidationResult {
-  const dateValidation = validateDate(date, fieldName)
-  if (!dateValidation.isValid) {
-    return dateValidation
-  }
-
-  const dateObj = typeof date === "string" ? new Date(date) : date
-  const today = new Date()
-  today.setHours(23, 59, 59, 999)
-
-  if (dateObj > today) {
-    return {
-      isValid: false,
-      error: `${fieldName || "Date"} cannot be in the future`,
-    }
-  }
-
-  return { isValid: true }
-}
-
-// Age validation (for date of birth)
-export function validateAge(dateOfBirth: string | Date, minAge = 18, maxAge = 100): ValidationResult {
-  const dateValidation = validateDate(dateOfBirth, "Date of birth")
-  if (!dateValidation.isValid) {
-    return dateValidation
-  }
-
-  const dob = typeof dateOfBirth === "string" ? new Date(dateOfBirth) : dateOfBirth
-  const today = new Date()
-  const age = today.getFullYear() - dob.getFullYear()
-  const monthDiff = today.getMonth() - dob.getMonth()
-
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-    // Birthday hasn't occurred this year
-  }
-
-  if (age < minAge) {
-    return {
-      isValid: false,
-      error: `You must be at least ${minAge} years old`,
-    }
-  }
-
-  if (age > maxAge) {
-    return {
-      isValid: false,
-      error: `Age cannot exceed ${maxAge} years`,
-    }
-  }
-
-  return { isValid: true }
-}
-
-// File validation
-export function validateFile(
-  file: File,
-  maxSize: number = 10 * 1024 * 1024, // 10MB
-  allowedTypes: string[] = ["image/jpeg", "image/png", "application/pdf"],
-): ValidationResult {
-  if (!file) {
-    return { isValid: false, error: "Please select a file" }
-  }
-
-  if (file.size > maxSize) {
-    return { isValid: false, error: ERROR_MESSAGES.FILE_TOO_LARGE }
-  }
-
-  if (!allowedTypes.includes(file.type)) {
-    return { isValid: false, error: ERROR_MESSAGES.INVALID_FILE_TYPE }
-  }
-
-  return { isValid: true }
-}
-
-// Business name validation
-export function validateBusinessName(name: string): ValidationResult {
-  if (!name) {
-    return { isValid: false, error: ERROR_MESSAGES.REQUIRED_FIELD }
-  }
-
-  if (name.length < 2) {
-    return { isValid: false, error: "Business name must be at least 2 characters long" }
-  }
-
-  if (name.length > 100) {
-    return { isValid: false, error: "Business name must be no more than 100 characters long" }
-  }
-
-  // Check for valid characters (letters, numbers, spaces, and common business symbols)
-  const validBusinessNameRegex = /^[a-zA-Z0-9\s&.,'-]+$/
-  if (!validBusinessNameRegex.test(name)) {
-    return { isValid: false, error: "Business name contains invalid characters" }
-  }
-
-  return { isValid: true }
-}
-
-// Amount validation (for Indian currency)
-export function validateAmount(
-  amount: number | string,
-  min = 0,
-  max = 10000000, // 1 Crore
-  fieldName?: string,
-): ValidationResult {
-  const numAmount = typeof amount === "string" ? Number.parseFloat(amount) : amount
-
-  if (isNaN(numAmount)) {
-    return { isValid: false, error: `Please enter a valid ${fieldName || "amount"}` }
-  }
-
-  if (numAmount < min) {
-    return {
-      isValid: false,
-      error: `${fieldName || "Amount"} must be at least ₹${min.toLocaleString("en-IN")}`,
-    }
-  }
-
-  if (numAmount > max) {
-    return {
-      isValid: false,
-      error: `${fieldName || "Amount"} cannot exceed ₹${max.toLocaleString("en-IN")}`,
-    }
-  }
-
-  return { isValid: true }
-}
-
-// Percentage validation
-export function validatePercentage(
-  percentage: number | string,
-  min = 0,
-  max = 100,
-  fieldName?: string,
-): ValidationResult {
-  const numPercentage = typeof percentage === "string" ? Number.parseFloat(percentage) : percentage
-
-  if (isNaN(numPercentage)) {
-    return { isValid: false, error: `Please enter a valid ${fieldName || "percentage"}` }
-  }
-
-  if (numPercentage < min) {
-    return {
-      isValid: false,
-      error: `${fieldName || "Percentage"} must be at least ${min}%`,
-    }
-  }
-
-  if (numPercentage > max) {
-    return {
-      isValid: false,
-      error: `${fieldName || "Percentage"} cannot exceed ${max}%`,
-    }
-  }
-
-  return { isValid: true }
-}
-
-// Multiple field validation
-export function validateMultiple(validations: (() => ValidationResult)[]): ValidationResult {
-  for (const validation of validations) {
-    const result = validation()
-    if (!result.isValid) {
-      return result
-    }
-  }
-
-  return { isValid: true }
-}
-
-// Custom validation function type
-export type CustomValidator<T = any> = (value: T) => ValidationResult
-
-// Generic field validator that accepts multiple validation rules
-export function validateField<T = any>(value: T, validators: CustomValidator<T>[]): ValidationResult {
-  for (const validator of validators) {
+// Utility function to validate a single field with multiple validators
+export const validateField = (value: any, validatorFunctions: ValidatorFunction[]): ValidatorResult => {
+  for (const validator of validatorFunctions) {
     const result = validator(value)
     if (!result.isValid) {
       return result
     }
   }
-
   return { isValid: true }
 }
 
-// Form validation helper
-export function validateForm<T extends Record<string, any>>(
-  data: T,
-  validationRules: Partial<Record<keyof T, CustomValidator<T[keyof T]>[]>>,
-): { isValid: boolean; errors: Partial<Record<keyof T, string>> } {
+// Utility function to validate an entire form
+export const validateForm = <T extends Record<string, any>>(
+  values: T,
+  validationRules: Record<keyof T, ValidatorFunction[]>,
+): { isValid: boolean; errors: Partial<Record<keyof T, string>> } => {
   const errors: Partial<Record<keyof T, string>> = {}
   let isValid = true
 
-  for (const [field, validators] of Object.entries(validationRules)) {
-    if (validators && Array.isArray(validators)) {
-      const fieldValue = data[field as keyof T]
-      const result = validateField(fieldValue, validators)
-
-      if (!result.isValid) {
-        errors[field as keyof T] = result.error
-        isValid = false
-      }
+  for (const field in validationRules) {
+    const fieldResult = validateField(values[field], validationRules[field])
+    if (!fieldResult.isValid) {
+      errors[field] = fieldResult.error
+      isValid = false
     }
   }
 
   return { isValid, errors }
 }
 
-// Export commonly used validator combinations
+// Common validator combinations
 export const commonValidators = {
-  required: (fieldName?: string) => (value: any) => validateRequired(value, fieldName),
-  email: () => (value: string) => validateEmail(value),
-  phone: () => (value: string) => validatePhone(value),
-  password: () => (value: string) => validatePassword(value),
-  gst: () => (value: string) => validateGST(value),
-  pan: () => (value: string) => validatePAN(value),
-  pincode: () => (value: string) => validatePincode(value),
-  businessName: () => (value: string) => validateBusinessName(value),
-  amount: (min?: number, max?: number, fieldName?: string) => (value: number | string) =>
-    validateAmount(value, min, max, fieldName),
-  length: (min?: number, max?: number, fieldName?: string) => (value: string) =>
-    validateLength(value, min, max, fieldName),
-  range: (min?: number, max?: number, fieldName?: string) => (value: number) =>
-    validateRange(value, min, max, fieldName),
+  requiredEmail: [validators.required(), validators.email()],
+  requiredPhone: [validators.required(), validators.phone()],
+  requiredPassword: [validators.required(), validators.password()],
+  requiredGST: [validators.required(), validators.gst()],
+  requiredPAN: [validators.required(), validators.pan()],
+  requiredBusinessName: [validators.required(), validators.businessName()],
+  optionalEmail: [validators.email()],
+  optionalPhone: [validators.phone()],
+  optionalURL: [validators.url()],
+  requiredAmount: [validators.required(), validators.amount()],
+  requiredPercentage: [validators.required(), validators.percentage()],
+
+  // File upload combinations
+  requiredImage: [validators.required(), validators.fileType(["jpg", "jpeg", "png", "webp"]), validators.fileSize(5)],
+  requiredDocument: [
+    validators.required(),
+    validators.fileType(["pdf", "jpg", "jpeg", "png"]),
+    validators.fileSize(10),
+  ],
+  optionalImage: [validators.fileType(["jpg", "jpeg", "png", "webp"]), validators.fileSize(5)],
 }
+
+// Export individual validators for direct use
+export const {
+  required,
+  email,
+  phone,
+  password,
+  minLength,
+  maxLength,
+  min,
+  max,
+  url,
+  gst,
+  pan,
+  aadhar,
+  ifsc,
+  pincode,
+  businessName,
+  pastDate,
+  futureDate,
+  minAge,
+  fileSize,
+  fileType,
+  amount,
+  percentage,
+  match,
+} = validators
