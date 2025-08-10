@@ -1,318 +1,319 @@
 "use client"
 
-import { useCallback, useMemo } from "react"
 import { useAuthStore } from "@/store/auth.store"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { apiClient } from "@/services/api-client"
+import { usePaymentStore } from "@/store/ui.store"
+import { useCreatePayment, useVerifyPayment } from "@/services/payments.api"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 
 /**
- * Pro status verification response
- */
-interface ProStatusResponse {
-  isPro: boolean
-  proExpiryDate?: string
-  proFeatures: string[]
-  subscriptionStatus: "active" | "expired" | "cancelled" | "trial"
-  trialDaysLeft?: number
-}
-
-/**
- * Pro upgrade response
- */
-interface ProUpgradeResponse {
-  success: boolean
-  message: string
-  paymentUrl?: string
-  subscriptionId?: string
-}
-
-/**
- * Custom hook for Pro status management and verification
- * Handles Pro status checks, upgrades, and feature access
+ * Custom hook for managing Pro subscription status and payments
+ * Handles Pro verification, payment processing, and feature access
  */
 export const usePro = () => {
   const router = useRouter()
-  const queryClient = useQueryClient()
   const { user, isPro, setProStatus, updateUserProfile } = useAuthStore()
+  const { isProcessingPayment, setProcessingPayment } = usePaymentStore()
 
-  /**
-   * Query to verify Pro status from server
-   */
-  const {
-    data: proStatus,
-    isLoading: isVerifyingPro,
-    error: proVerificationError,
-    refetch: refetchProStatus,
-  } = useQuery({
-    queryKey: ["pro-status", user?.id],
-    queryFn: async (): Promise<ProStatusResponse> => {
-      const response = await apiClient.get<ProStatusResponse>("/user/pro-status")
-      return response.data
-    },
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
-  })
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [proFeatures, setProFeatures] = useState<string[]>([])
 
-  /**
-   * Mutation to upgrade user to Pro
-   */
-  const upgradeToProMutation = useMutation({
-    mutationFn: async (paymentData: { amount: number; currency: string }) => {
-      const response = await apiClient.post<ProUpgradeResponse>("/payments/upgrade-pro", paymentData)
-      return response.data
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        setProStatus(true)
-        updateUserProfile({ isPro: true })
-        queryClient.invalidateQueries({ queryKey: ["pro-status"] })
-
-        toast({
-          title: "Welcome to MSMEBazaar Pro! 🎉",
-          description: "You now have access to all premium features",
-        })
-
-        // Redirect to dashboard or payment success page
-        if (data.paymentUrl) {
-          window.location.href = data.paymentUrl
-        } else {
-          router.push("/dashboard")
-        }
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Upgrade Failed",
-        description: error.message || "Failed to upgrade to Pro. Please try again.",
-        variant: "destructive",
-      })
-    },
-  })
-
-  /**
-   * Mutation to cancel Pro subscription
-   */
-  const cancelProMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiClient.post<{ success: boolean; message: string }>("/payments/cancel-pro")
-      return response.data
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        queryClient.invalidateQueries({ queryKey: ["pro-status"] })
-
-        toast({
-          title: "Subscription Cancelled",
-          description: "Your Pro subscription has been cancelled",
-        })
-      }
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Cancellation Failed",
-        description: error.message || "Failed to cancel subscription. Please contact support.",
-        variant: "destructive",
-      })
-    },
-  })
+  const createPaymentMutation = useCreatePayment()
+  const verifyPaymentMutation = useVerifyPayment()
 
   /**
    * Check if user has Pro access
    */
-  const hasProAccess = useMemo(() => {
-    // Check local state first, then server verification
-    if (isPro) return true
-    if (proStatus?.isPro) return true
-    return false
-  }, [isPro, proStatus?.isPro])
+  const hasProAccess = useCallback(() => {
+    return isPro && user?.isPro === true
+  }, [isPro, user?.isPro])
 
   /**
-   * Check if user is on trial
+   * Verify Pro status with server
    */
-  const isOnTrial = useMemo(() => {
-    return proStatus?.subscriptionStatus === "trial"
-  }, [proStatus?.subscriptionStatus])
+  const verifyProStatus = useCallback(async () => {
+    if (!user?.id) return false
+
+    setIsVerifying(true)
+    try {
+      // This would typically call an API to verify Pro status
+      const response = await fetch(`/api/users/${user.id}/pro-status`, {
+        headers: {
+          Authorization: `Bearer ${useAuthStore.getState().token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const isProActive = data.isPro && data.subscriptionActive
+
+        if (isProActive !== isPro) {
+          setProStatus(isProActive)
+          updateUserProfile({ isPro: isProActive })
+        }
+
+        return isProActive
+      }
+      return false
+    } catch (error) {
+      console.error("Failed to verify Pro status:", error)
+      return false
+    } finally {
+      setIsVerifying(false)
+    }
+  }, [user?.id, isPro, setProStatus, updateUserProfile])
 
   /**
-   * Get trial days remaining
+   * Initiate Pro subscription payment
    */
-  const trialDaysLeft = useMemo(() => {
-    return proStatus?.trialDaysLeft || 0
-  }, [proStatus?.trialDaysLeft])
+  const subscribeToPro = useCallback(async () => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to subscribe to Pro",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (isPro) {
+      toast({
+        title: "Already Pro",
+        description: "You already have an active Pro subscription",
+      })
+      return
+    }
+
+    setProcessingPayment(true)
+    try {
+      const paymentData = await createPaymentMutation.mutateAsync({
+        amount: 9900, // ₹99 in paise
+        currency: "INR",
+        description: "MSMEBazaar Pro Subscription",
+        userId: user.id,
+        planType: "pro_monthly",
+      })
+
+      // Open Razorpay payment modal
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: paymentData.amount,
+        currency: paymentData.currency,
+        name: "MSMEBazaar",
+        description: "Pro Subscription",
+        order_id: paymentData.orderId,
+        handler: async (response: any) => {
+          await handlePaymentSuccess(response)
+        },
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone,
+        },
+        theme: {
+          color: "#3B82F6",
+        },
+        modal: {
+          ondismiss: () => {
+            setProcessingPayment(false)
+            toast({
+              title: "Payment Cancelled",
+              description: "Pro subscription payment was cancelled",
+              variant: "destructive",
+            })
+          },
+        },
+      }
+
+      const razorpay = new (window as any).Razorpay(options)
+      razorpay.open()
+    } catch (error: any) {
+      setProcessingPayment(false)
+      toast({
+        title: "Payment Failed",
+        description: error.message || "Failed to initiate payment",
+        variant: "destructive",
+      })
+    }
+  }, [user, isPro, createPaymentMutation, setProcessingPayment])
 
   /**
-   * Check if Pro subscription is expired
+   * Handle successful payment
    */
-  const isProExpired = useMemo(() => {
-    return proStatus?.subscriptionStatus === "expired"
-  }, [proStatus?.subscriptionStatus])
+  const handlePaymentSuccess = useCallback(
+    async (paymentResponse: any) => {
+      try {
+        const verification = await verifyPaymentMutation.mutateAsync({
+          razorpayPaymentId: paymentResponse.razorpay_payment_id,
+          razorpayOrderId: paymentResponse.razorpay_order_id,
+          razorpaySignature: paymentResponse.razorpay_signature,
+        })
+
+        if (verification.success) {
+          setProStatus(true)
+          updateUserProfile({ isPro: true })
+
+          toast({
+            title: "Welcome to MSMEBazaar Pro! 🎉",
+            description: "You now have access to all premium features",
+          })
+
+          // Redirect to dashboard or Pro welcome page
+          router.push("/dashboard?welcome=pro")
+        } else {
+          throw new Error("Payment verification failed")
+        }
+      } catch (error: any) {
+        toast({
+          title: "Payment Verification Failed",
+          description: error.message || "Please contact support",
+          variant: "destructive",
+        })
+      } finally {
+        setProcessingPayment(false)
+      }
+    },
+    [verifyPaymentMutation, setProStatus, updateUserProfile, router, setProcessingPayment],
+  )
 
   /**
    * Get Pro features list
    */
-  const proFeatures = useMemo(() => {
-    return (
-      proStatus?.proFeatures || [
-        "Advanced Business Loans",
-        "AI-Powered Valuation",
-        "Exit Strategy Planning",
-        "Premium Market Linkage",
-        "Priority Support",
-        "Advanced Analytics",
-        "Custom Reports",
-        "API Access",
-      ]
-    )
-  }, [proStatus?.proFeatures])
+  const getProFeatures = useCallback(() => {
+    return [
+      "Advanced Business Loans",
+      "AI-Powered Valuation",
+      "Exit Strategy Planning",
+      "Premium Market Linkage",
+      "Priority Support",
+      "Advanced Analytics",
+      "Custom Reports",
+      "API Access",
+    ]
+  }, [])
 
   /**
-   * Check if user has access to a specific Pro feature
+   * Check if specific feature requires Pro
    */
-  const hasFeatureAccess = useCallback(
-    (feature: string): boolean => {
-      if (!hasProAccess) return false
-      return proFeatures.includes(feature)
-    },
-    [hasProAccess, proFeatures],
-  )
+  const isProFeature = useCallback((featureName: string) => {
+    const proOnlyFeatures = [
+      "advanced-loans",
+      "ai-valuation",
+      "exit-strategy",
+      "premium-market-linkage",
+      "priority-support",
+      "analytics",
+      "custom-reports",
+      "api-access",
+    ]
+    return proOnlyFeatures.includes(featureName)
+  }, [])
 
   /**
-   * Upgrade to Pro with ₹99 payment
+   * Get Pro upgrade prompt for feature
    */
-  const upgradeToPro = useCallback(async () => {
-    try {
-      await upgradeToProMutation.mutateAsync({
-        amount: 99,
-        currency: "INR",
-      })
-    } catch (error) {
-      console.error("Pro upgrade failed:", error)
+  const getProUpgradePrompt = useCallback((featureName: string) => {
+    const prompts: Record<string, string> = {
+      "advanced-loans": "Unlock advanced loan options with better rates and higher amounts",
+      "ai-valuation": "Get AI-powered business valuation with detailed insights",
+      "exit-strategy": "Access comprehensive exit strategy planning tools",
+      "premium-market-linkage": "Connect with premium buyers and suppliers",
+      "priority-support": "Get priority customer support and dedicated assistance",
+      analytics: "Access detailed business analytics and insights",
+      "custom-reports": "Generate custom reports and export data",
+      "api-access": "Integrate with our API for advanced functionality",
     }
-  }, [upgradeToProMutation])
+    return prompts[featureName] || "Upgrade to Pro to access this premium feature"
+  }, [])
 
   /**
-   * Cancel Pro subscription
+   * Show Pro upgrade modal
    */
-  const cancelPro = useCallback(async () => {
-    try {
-      await cancelProMutation.mutateAsync()
-    } catch (error) {
-      console.error("Pro cancellation failed:", error)
-    }
-  }, [cancelProMutation])
-
-  /**
-   * Redirect to Pro upgrade page
-   */
-  const redirectToUpgrade = useCallback(() => {
-    router.push("/onboarding-welcome")
-  }, [router])
-
-  /**
-   * Show Pro upgrade modal/toast
-   */
-  const showUpgradePrompt = useCallback(
-    (feature?: string) => {
-      const message = feature ? `Upgrade to Pro to access ${feature}` : "Upgrade to Pro to unlock all premium features"
+  const showProUpgradeModal = useCallback(
+    (featureName?: string) => {
+      const message = featureName
+        ? getProUpgradePrompt(featureName)
+        : "Upgrade to MSMEBazaar Pro to unlock all premium features"
 
       toast({
-        title: "Pro Feature Required",
+        title: "Pro Feature",
         description: message,
         action: {
-          label: "Upgrade for ₹99",
-          onClick: redirectToUpgrade,
+          label: "Upgrade Now",
+          onClick: subscribeToPro,
         },
       })
     },
-    [redirectToUpgrade],
+    [getProUpgradePrompt, subscribeToPro],
   )
 
   /**
-   * Get Pro status display information
+   * Calculate days remaining in trial (if applicable)
    */
-  const getProStatusInfo = useMemo(() => {
-    if (!proStatus) {
-      return {
-        status: "loading",
-        message: "Checking Pro status...",
-        color: "gray",
-      }
-    }
+  const getTrialDaysRemaining = useCallback(() => {
+    if (!user?.trialEndsAt) return 0
 
-    if (proStatus.subscriptionStatus === "active") {
-      return {
-        status: "active",
-        message: "Pro Active",
-        color: "green",
-        expiryDate: proStatus.proExpiryDate,
-      }
-    }
+    const trialEnd = new Date(user.trialEndsAt)
+    const now = new Date()
+    const diffTime = trialEnd.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-    if (proStatus.subscriptionStatus === "trial") {
-      return {
-        status: "trial",
-        message: `Trial - ${trialDaysLeft} days left`,
-        color: "blue",
-      }
-    }
-
-    if (proStatus.subscriptionStatus === "expired") {
-      return {
-        status: "expired",
-        message: "Pro Expired",
-        color: "red",
-      }
-    }
-
-    return {
-      status: "inactive",
-      message: "Not Pro",
-      color: "gray",
-    }
-  }, [proStatus, trialDaysLeft])
+    return Math.max(0, diffDays)
+  }, [user?.trialEndsAt])
 
   /**
-   * Sync local Pro status with server
+   * Check if user is in trial period
    */
-  const syncProStatus = useCallback(async () => {
-    try {
-      const serverStatus = await refetchProStatus()
-      if (serverStatus.data?.isPro !== isPro) {
-        setProStatus(serverStatus.data?.isPro || false)
-        updateUserProfile({ isPro: serverStatus.data?.isPro || false })
-      }
-    } catch (error) {
-      console.error("Failed to sync Pro status:", error)
+  const isInTrial = useCallback(() => {
+    return getTrialDaysRemaining() > 0
+  }, [getTrialDaysRemaining])
+
+  // Load Razorpay script
+  useEffect(() => {
+    const script = document.createElement("script")
+    script.src = "https://checkout.razorpay.com/v1/checkout.js"
+    script.async = true
+    document.body.appendChild(script)
+
+    return () => {
+      document.body.removeChild(script)
     }
-  }, [refetchProStatus, isPro, setProStatus, updateUserProfile])
+  }, [])
+
+  // Verify Pro status on mount and periodically
+  useEffect(() => {
+    if (user?.id) {
+      verifyProStatus()
+
+      // Verify Pro status every 30 minutes
+      const interval = setInterval(verifyProStatus, 30 * 60 * 1000)
+      return () => clearInterval(interval)
+    }
+  }, [user?.id, verifyProStatus])
 
   return {
-    // Status
-    hasProAccess,
-    isOnTrial,
-    isProExpired,
-    trialDaysLeft,
-    proFeatures,
-    proStatus: getProStatusInfo,
+    // State
+    isPro,
+    hasProAccess: hasProAccess(),
+    isVerifying,
+    isProcessingPayment,
+    proFeatures: getProFeatures(),
+    trialDaysRemaining: getTrialDaysRemaining(),
+    isInTrial: isInTrial(),
 
     // Actions
-    upgradeToPro,
-    cancelPro,
-    redirectToUpgrade,
-    showUpgradePrompt,
-    hasFeatureAccess,
-    syncProStatus,
+    subscribeToPro,
+    verifyProStatus,
+    showProUpgradeModal,
+
+    // Utilities
+    isProFeature,
+    getProUpgradePrompt,
 
     // Loading states
-    isVerifyingPro,
-    isUpgrading: upgradeToProMutation.isPending,
-    isCancelling: cancelProMutation.isPending,
-
-    // Errors
-    proVerificationError,
+    isCreatingPayment: createPaymentMutation.isPending,
+    isVerifyingPayment: verifyPaymentMutation.isPending,
   }
 }
 
