@@ -1,12 +1,12 @@
 /**
  * User role types for MSMEBazaar platform
  */
-export type UserRole = "msmeOwner" | "buyer" | "seller" | "investor" | "agent" | "founder" | "admin" | "superadmin"
+export type UserRole = "msmeOwner" | "founder" | "buyer" | "seller" | "investor" | "agent" | "admin" | "superadmin"
 
 /**
  * User subscription plan types
  */
-export type SubscriptionPlan = "free" | "pro"
+export type SubscriptionPlan = "free" | "pro" | "enterprise"
 
 /**
  * User interface representing a platform user
@@ -15,20 +15,45 @@ export interface User {
   id: string
   email: string
   name: string
+  avatar?: string
   businessName?: string
   phone?: string
+
+  // Role and permissions
   roles: UserRole[]
   primaryRole: UserRole
+
+  // Subscription and features
   subscriptionPlan: SubscriptionPlan
-  isProActive: boolean
+  isProUser: boolean
   proExpiresAt?: Date
-  avatar?: string
-  isEmailVerified: boolean
-  isPhoneVerified: boolean
+
+  // Profile completion
+  profileCompleted: boolean
+  onboardingCompleted: boolean
+
+  // Business details (for MSME owners)
+  businessType?: string
+  businessSize?: "micro" | "small" | "medium"
+  industry?: string
+  gstNumber?: string
+
+  // Timestamps
   createdAt: Date
   updatedAt: Date
-  onboardingCompleted: boolean
-  kycStatus: "pending" | "verified" | "rejected"
+  lastLoginAt?: Date
+
+  // Feature access
+  featureAccess: {
+    businessLoans: boolean
+    businessValuation: boolean
+    exitStrategy: boolean
+    marketLinkage: boolean
+    msmeNetworking: boolean
+    compliance: boolean
+    plantMachinery: boolean
+    leadershipTraining: boolean
+  }
 }
 
 /**
@@ -38,7 +63,10 @@ export interface UserProfileUpdate {
   name?: string
   businessName?: string
   phone?: string
-  avatar?: string
+  businessType?: string
+  businessSize?: "micro" | "small" | "medium"
+  industry?: string
+  gstNumber?: string
 }
 
 /**
@@ -49,6 +77,6 @@ export interface UserRegistration {
   password: string
   name: string
   businessName?: string
-  phone?: string
   primaryRole: UserRole
+  phone?: string
 }

@@ -11,7 +11,7 @@ interface QueryProviderProps {
 }
 
 /**
- * React Query provider component that wraps the app with QueryClient
+ * React Query provider component that wraps the application
  * Provides data fetching, caching, and synchronization capabilities
  */
 export function QueryProvider({ children }: QueryProviderProps) {

@@ -33,17 +33,36 @@ interface AuthProviderProps {
  * Uses Zustand store for state management
  */
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { user, isLoading, isAuthenticated, login, logout, register, initializeAuth } = useAuthStore()
+  const {
+    user,
+    isLoading,
+    login: storeLogin,
+    logout: storeLogout,
+    register: storeRegister,
+    initializeAuth,
+  } = useAuthStore()
 
   useEffect(() => {
-    // Initialize auth state on app load
+    // Initialize auth state from localStorage/cookies on mount
     initializeAuth()
   }, [initializeAuth])
+
+  const login = async (email: string, password: string) => {
+    await storeLogin(email, password)
+  }
+
+  const logout = () => {
+    storeLogout()
+  }
+
+  const register = async (userData: RegisterData) => {
+    await storeRegister(userData)
+  }
 
   const value: AuthContextType = {
     user,
     isLoading,
-    isAuthenticated,
+    isAuthenticated: !!user,
     login,
     logout,
     register,
@@ -53,7 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 }
 
 /**
- * Hook to access auth context
+ * Hook to access authentication context
  * Must be used within AuthProvider
  */
 export function useAuth() {

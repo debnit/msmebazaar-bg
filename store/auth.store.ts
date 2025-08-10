@@ -2,11 +2,18 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { User } from "@/types/user"
 
+interface RegisterData {
+  email: string
+  password: string
+  name: string
+  businessName?: string
+}
+
 interface AuthState {
   user: User | null
   token: string | null
   isLoading: boolean
-  isAuthenticated: boolean
+  error: string | null
 }
 
 interface AuthActions {
@@ -15,14 +22,9 @@ interface AuthActions {
   logout: () => void
   setUser: (user: User) => void
   setToken: (token: string) => void
+  setLoading: (loading: boolean) => void
+  setError: (error: string | null) => void
   initializeAuth: () => void
-}
-
-interface RegisterData {
-  email: string
-  password: string
-  name: string
-  businessName?: string
 }
 
 type AuthStore = AuthState & AuthActions
@@ -39,11 +41,11 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       token: null,
       isLoading: false,
-      isAuthenticated: false,
+      error: null,
 
       // Actions
       login: async (email: string, password: string) => {
-        set({ isLoading: true })
+        set({ isLoading: true, error: null })
         try {
           // TODO: Replace with actual API call
           const response = await fetch("/api/auth/login", {
@@ -63,15 +65,19 @@ export const useAuthStore = create<AuthStore>()(
             token,
             isAuthenticated: true,
             isLoading: false,
+            error: null,
           })
         } catch (error) {
-          set({ isLoading: false })
+          set({
+            error: error instanceof Error ? error.message : "Login failed",
+            isLoading: false,
+          })
           throw error
         }
       },
 
       register: async (userData: RegisterData) => {
-        set({ isLoading: true })
+        set({ isLoading: true, error: null })
         try {
           // TODO: Replace with actual API call
           const response = await fetch("/api/auth/register", {
@@ -91,9 +97,13 @@ export const useAuthStore = create<AuthStore>()(
             token,
             isAuthenticated: true,
             isLoading: false,
+            error: null,
           })
         } catch (error) {
-          set({ isLoading: false })
+          set({
+            error: error instanceof Error ? error.message : "Registration failed",
+            isLoading: false,
+          })
           throw error
         }
       },
@@ -104,21 +114,20 @@ export const useAuthStore = create<AuthStore>()(
           token: null,
           isAuthenticated: false,
           isLoading: false,
+          error: null,
         })
       },
 
-      setUser: (user: User) => {
-        set({ user, isAuthenticated: true })
-      },
-
-      setToken: (token: string) => {
-        set({ token })
-      },
+      setUser: (user: User) => set({ user }),
+      setToken: (token: string) => set({ token }),
+      setLoading: (isLoading: boolean) => set({ isLoading }),
+      setError: (error: string | null) => set({ error }),
 
       initializeAuth: () => {
-        const { token, user } = get()
-        if (token && user) {
-          set({ isAuthenticated: true })
+        const { token } = get()
+        if (token) {
+          // TODO: Validate token with backend
+          console.log("Auth initialized with token:", token)
         }
       },
     }),
