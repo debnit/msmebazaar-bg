@@ -1,48 +1,68 @@
 "use client"
 
-import React from "react"
+import { Component, type ErrorInfo, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-interface ErrorBoundaryState {
+interface Props {
+  children: ReactNode
+  fallback?: ReactNode
+}
+
+interface State {
   hasError: boolean
   error?: Error
 }
 
 /**
- * Error boundary component for MSMEBazaar
- * Catches and displays JavaScript errors in the component tree
+ * Error boundary component that catches JavaScript errors anywhere in the child component tree
+ * Displays a fallback UI instead of crashing the entire app
  */
-export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props)
-    this.state = { hasError: false }
+export class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Error caught by boundary:", error, errorInfo)
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("Error boundary caught an error:", error, errorInfo)
   }
 
-  render() {
+  private handleReset = () => {
+    this.setState({ hasError: false, error: undefined })
+  }
+
+  public render() {
     if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback
+      }
+
       return (
-        <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4">
           <Card className="w-full max-w-md">
             <CardHeader>
-              <CardTitle className="text-destructive">Something went wrong</CardTitle>
-              <CardDescription>An unexpected error occurred. Please try refreshing the page.</CardDescription>
+              <CardTitle className="text-center text-red-600">Something went wrong</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <p className="text-center text-muted-foreground">
+                We apologize for the inconvenience. Please try refreshing the page.
+              </p>
               {process.env.NODE_ENV === "development" && this.state.error && (
-                <pre className="text-xs text-muted-foreground overflow-auto">{this.state.error.message}</pre>
+                <details className="text-sm bg-muted p-2 rounded">
+                  <summary>Error details</summary>
+                  <pre className="mt-2 whitespace-pre-wrap">{this.state.error.message}</pre>
+                </details>
               )}
-              <Button onClick={() => window.location.reload()} className="w-full">
-                Refresh Page
-              </Button>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={this.handleReset} variant="outline">
+                  Try Again
+                </Button>
+                <Button onClick={() => window.location.reload()}>Refresh Page</Button>
+              </div>
             </CardContent>
           </Card>
         </div>

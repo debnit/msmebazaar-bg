@@ -1,68 +1,61 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useEffect, useState } from "react"
+
+import { createContext, useContext, useEffect } from "react"
 import { useAuthStore } from "@/store/auth.store"
+import type { User } from "@/types/user"
 
 interface AuthContextType {
+  user: User | null
+  isLoading: boolean
   isAuthenticated: boolean
-  user: any | null
-  login: (token: string, user: any) => void
+  login: (email: string, password: string) => Promise<void>
   logout: () => void
-  loading: boolean
+  register: (userData: RegisterData) => Promise<void>
+}
+
+interface RegisterData {
+  email: string
+  password: string
+  name: string
+  businessName?: string
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+interface AuthProviderProps {
+  children: React.ReactNode
+}
+
 /**
- * Authentication provider component for MSMEBazaar
- * Manages user authentication state and provides auth context
+ * Authentication provider that manages user state and auth operations
+ * Uses Zustand store for state management
  */
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, token, setAuth, clearAuth } = useAuthStore()
-  const [loading, setLoading] = useState(true)
+export function AuthProvider({ children }: AuthProviderProps) {
+  const { user, isLoading, isAuthenticated, login, logout, register, initializeAuth } = useAuthStore()
 
   useEffect(() => {
-    // Check for stored auth token on mount
-    const storedToken = localStorage.getItem("auth-token")
-    const storedUser = localStorage.getItem("auth-user")
-
-    if (storedToken && storedUser) {
-      try {
-        setAuth(storedToken, JSON.parse(storedUser))
-      } catch (error) {
-        console.error("Failed to parse stored user data:", error)
-        localStorage.removeItem("auth-token")
-        localStorage.removeItem("auth-user")
-      }
-    }
-
-    setLoading(false)
-  }, [setAuth])
-
-  const login = (token: string, user: any) => {
-    localStorage.setItem("auth-token", token)
-    localStorage.setItem("auth-user", JSON.stringify(user))
-    setAuth(token, user)
-  }
-
-  const logout = () => {
-    localStorage.removeItem("auth-token")
-    localStorage.removeItem("auth-user")
-    clearAuth()
-  }
+    // Initialize auth state on app load
+    initializeAuth()
+  }, [initializeAuth])
 
   const value: AuthContextType = {
-    isAuthenticated: !!token && !!user,
     user,
+    isLoading,
+    isAuthenticated,
     login,
     logout,
-    loading,
+    register,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+/**
+ * Hook to access auth context
+ * Must be used within AuthProvider
+ */
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
