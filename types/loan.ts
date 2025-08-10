@@ -7,10 +7,12 @@ export interface LoanApplication {
   purpose: LoanPurpose
   tenure: number // in months
   interestRate?: number
-  status: LoanApplicationStatus
-  stage: LoanProcessingStage
-  submittedAt: Date
+  status: LoanStatus
+  stage: LoanStage
+  priority: LoanPriority
+  createdAt: Date
   updatedAt: Date
+  submittedAt?: Date
   approvedAt?: Date
   disbursedAt?: Date
   rejectedAt?: Date
@@ -21,9 +23,8 @@ export interface LoanApplication {
   financialDetails: FinancialDetails
   collateral?: CollateralDetails[]
   guarantors?: GuarantorDetails[]
-  creditScore?: CreditScore
-  riskAssessment?: RiskAssessment
   repaymentSchedule?: RepaymentSchedule[]
+  disbursementDetails?: DisbursementDetails
   metadata: Record<string, any>
 }
 
@@ -33,11 +34,13 @@ export enum LoanType {
   EQUIPMENT_FINANCE = "equipment_finance",
   INVOICE_DISCOUNTING = "invoice_discounting",
   TRADE_FINANCE = "trade_finance",
-  MSME_LOAN = "msme_loan",
+  EXPORT_FINANCE = "export_finance",
   MUDRA_LOAN = "mudra_loan",
-  STAND_UP_INDIA = "stand_up_india",
-  PMEGP = "pmegp",
-  CGTMSE = "cgtmse",
+  MSME_LOAN = "msme_loan",
+  STARTUP_LOAN = "startup_loan",
+  GOLD_LOAN = "gold_loan",
+  PROPERTY_LOAN = "property_loan",
+  VEHICLE_LOAN = "vehicle_loan",
 }
 
 export enum LoanPurpose {
@@ -46,203 +49,264 @@ export enum LoanPurpose {
   EQUIPMENT_PURCHASE = "equipment_purchase",
   WORKING_CAPITAL = "working_capital",
   DEBT_CONSOLIDATION = "debt_consolidation",
-  TECHNOLOGY_UPGRADE = "technology_upgrade",
   MARKETING = "marketing",
-  EXPORT_FINANCE = "export_finance",
-  RAW_MATERIAL = "raw_material",
+  TECHNOLOGY_UPGRADE = "technology_upgrade",
+  EXPORT_ORDERS = "export_orders",
+  RAW_MATERIALS = "raw_materials",
   INFRASTRUCTURE = "infrastructure",
+  OTHER = "other",
 }
 
-export enum LoanApplicationStatus {
+export enum LoanStatus {
   DRAFT = "draft",
   SUBMITTED = "submitted",
   UNDER_REVIEW = "under_review",
   APPROVED = "approved",
   REJECTED = "rejected",
   DISBURSED = "disbursed",
+  ACTIVE = "active",
   CLOSED = "closed",
   DEFAULTED = "defaulted",
+  WRITTEN_OFF = "written_off",
 }
 
-export enum LoanProcessingStage {
-  APPLICATION_RECEIVED = "application_received",
+export enum LoanStage {
+  APPLICATION = "application",
   DOCUMENT_VERIFICATION = "document_verification",
   CREDIT_ASSESSMENT = "credit_assessment",
   FIELD_VERIFICATION = "field_verification",
-  TECHNICAL_EVALUATION = "technical_evaluation",
-  RISK_ASSESSMENT = "risk_assessment",
   APPROVAL_COMMITTEE = "approval_committee",
-  SANCTION_LETTER = "sanction_letter",
-  DOCUMENTATION = "documentation",
+  LEGAL_VERIFICATION = "legal_verification",
   DISBURSEMENT = "disbursement",
+  REPAYMENT = "repayment",
 }
 
-export interface LoanDocument {
-  id: string
-  type: LoanDocumentType
-  name: string
-  url: string
-  uploadedAt: Date
-  verifiedAt?: Date
-  verifiedBy?: string
-  status: DocumentVerificationStatus
-  remarks?: string
-  expiryDate?: Date
-  isRequired: boolean
-}
-
-export enum LoanDocumentType {
-  // Business Documents
-  BUSINESS_REGISTRATION = "business_registration",
-  GST_CERTIFICATE = "gst_certificate",
-  PAN_CARD = "pan_card",
-  UDYAM_CERTIFICATE = "udyam_certificate",
-  PARTNERSHIP_DEED = "partnership_deed",
-  MOA_AOA = "moa_aoa",
-
-  // Financial Documents
-  BANK_STATEMENTS = "bank_statements",
-  ITR = "itr",
-  BALANCE_SHEET = "balance_sheet",
-  PROFIT_LOSS = "profit_loss",
-  CA_CERTIFICATE = "ca_certificate",
-  FINANCIAL_PROJECTIONS = "financial_projections",
-
-  // Personal Documents
-  AADHAR_CARD = "aadhar_card",
-  PASSPORT = "passport",
-  DRIVING_LICENSE = "driving_license",
-  VOTER_ID = "voter_id",
-
-  // Property Documents
-  PROPERTY_PAPERS = "property_papers",
-  VALUATION_REPORT = "valuation_report",
-  NOC = "noc",
-
-  // Other Documents
-  PROJECT_REPORT = "project_report",
-  QUOTATIONS = "quotations",
-  INSURANCE_POLICY = "insurance_policy",
-  EXISTING_LOAN_DETAILS = "existing_loan_details",
-}
-
-export enum DocumentVerificationStatus {
-  PENDING = "pending",
-  VERIFIED = "verified",
-  REJECTED = "rejected",
-  EXPIRED = "expired",
+export enum LoanPriority {
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+  URGENT = "urgent",
 }
 
 export interface BusinessLoanDetails {
   businessName: string
   businessType: string
   industryType: string
-  yearOfEstablishment: number
+  yearsInBusiness: number
   numberOfEmployees: number
   annualTurnover: number
+  monthlyRevenue: number
   businessAddress: Address
-  businessDescription: string
-  existingLoans: ExistingLoan[]
-  bankingRelationship: BankingRelationship[]
+  gstNumber?: string
+  panNumber: string
+  udyamNumber?: string
+  businessRegistrationNumber?: string
+  businessModel: string
+  majorCustomers?: string[]
+  majorSuppliers?: string[]
+  seasonality?: SeasonalityInfo
 }
 
 export interface FinancialDetails {
-  annualRevenue: number
-  monthlyRevenue: number
-  netProfit: number
-  existingEMI: number
-  cashFlow: CashFlowDetails
-  assets: AssetDetails[]
-  liabilities: LiabilityDetails[]
-  financialRatios: FinancialRatios
+  bankStatements: BankStatement[]
+  gstReturns?: GSTReturn[]
+  itrReturns: ITRReturn[]
+  balanceSheets: BalanceSheet[]
+  profitLossStatements: ProfitLossStatement[]
+  cashFlowStatements?: CashFlowStatement[]
+  existingLoans: ExistingLoan[]
+  creditScore?: number
+  creditHistory?: CreditHistoryItem[]
+  monthlyIncome: number
+  monthlyExpenses: number
+  netWorth: number
+  debtToIncomeRatio: number
 }
 
-export interface CashFlowDetails {
+export interface BankStatement {
+  id: string
+  bankName: string
+  accountNumber: string
+  accountType: string
+  fromDate: Date
+  toDate: Date
+  openingBalance: number
+  closingBalance: number
+  averageBalance: number
+  totalCredits: number
+  totalDebits: number
+  bounceCharges: number
+  transactions: BankTransaction[]
+  uploadedAt: Date
+  verifiedAt?: Date
+  verificationStatus: DocumentVerificationStatus
+}
+
+export interface BankTransaction {
+  date: Date
+  description: string
+  debitAmount?: number
+  creditAmount?: number
+  balance: number
+  category?: TransactionCategory
+}
+
+export enum TransactionCategory {
+  SALES = "sales",
+  PURCHASES = "purchases",
+  SALARY = "salary",
+  RENT = "rent",
+  UTILITIES = "utilities",
+  LOAN_EMI = "loan_emi",
+  TAX_PAYMENT = "tax_payment",
+  INVESTMENT = "investment",
+  OTHER = "other",
+}
+
+export interface GSTReturn {
+  id: string
+  period: string
+  filingDate: Date
+  totalSales: number
+  totalPurchases: number
+  taxPaid: number
+  status: string
+  uploadedAt: Date
+  verifiedAt?: Date
+}
+
+export interface ITRReturn {
+  id: string
+  assessmentYear: string
+  filingDate: Date
+  totalIncome: number
+  taxableIncome: number
+  taxPaid: number
+  refundAmount?: number
+  uploadedAt: Date
+  verifiedAt?: Date
+}
+
+export interface BalanceSheet {
+  id: string
+  financialYear: string
+  totalAssets: number
+  totalLiabilities: number
+  shareholderEquity: number
+  currentAssets: number
+  currentLiabilities: number
+  fixedAssets: number
+  longTermLiabilities: number
+  uploadedAt: Date
+  verifiedAt?: Date
+}
+
+export interface ProfitLossStatement {
+  id: string
+  financialYear: string
+  totalRevenue: number
+  totalExpenses: number
+  grossProfit: number
+  netProfit: number
+  ebitda: number
+  operatingProfit: number
+  uploadedAt: Date
+  verifiedAt?: Date
+}
+
+export interface CashFlowStatement {
+  id: string
+  financialYear: string
   operatingCashFlow: number
   investingCashFlow: number
   financingCashFlow: number
   netCashFlow: number
-  cashFlowProjection: MonthlyProjection[]
+  uploadedAt: Date
+  verifiedAt?: Date
 }
 
-export interface MonthlyProjection {
-  month: number
-  year: number
-  revenue: number
-  expenses: number
-  netCashFlow: number
+export interface ExistingLoan {
+  lenderName: string
+  loanType: string
+  originalAmount: number
+  outstandingAmount: number
+  monthlyEMI: number
+  interestRate: number
+  startDate: Date
+  endDate: Date
+  status: string
+  collateral?: string
 }
 
-export interface AssetDetails {
-  type: AssetType
-  description: string
-  value: number
-  acquisitionDate: Date
-  depreciationRate?: number
-  currentValue: number
-}
-
-export enum AssetType {
-  CURRENT_ASSETS = "current_assets",
-  FIXED_ASSETS = "fixed_assets",
-  INTANGIBLE_ASSETS = "intangible_assets",
-  INVESTMENTS = "investments",
-}
-
-export interface LiabilityDetails {
-  type: LiabilityType
-  description: string
+export interface CreditHistoryItem {
+  date: Date
+  type: "loan" | "credit_card" | "overdraft"
   amount: number
-  interestRate?: number
-  maturityDate?: Date
-  monthlyPayment?: number
-}
-
-export enum LiabilityType {
-  CURRENT_LIABILITIES = "current_liabilities",
-  LONG_TERM_DEBT = "long_term_debt",
-  CONTINGENT_LIABILITIES = "contingent_liabilities",
-}
-
-export interface FinancialRatios {
-  currentRatio: number
-  quickRatio: number
-  debtToEquityRatio: number
-  returnOnAssets: number
-  returnOnEquity: number
-  grossProfitMargin: number
-  netProfitMargin: number
-  interestCoverageRatio: number
+  status: "paid" | "delayed" | "defaulted"
+  daysDelayed?: number
+  lenderName: string
 }
 
 export interface CollateralDetails {
   id: string
   type: CollateralType
   description: string
-  value: number
-  valuationDate: Date
-  valuedBy: string
-  location: Address
+  estimatedValue: number
+  marketValue?: number
+  ownership: OwnershipType
+  location?: Address
   documents: LoanDocument[]
-  insuranceDetails?: InsuranceDetails
+  valuationReport?: ValuationReport
+  insurance?: InsuranceDetails
+  legalStatus: LegalStatus
 }
 
 export enum CollateralType {
-  REAL_ESTATE = "real_estate",
+  PROPERTY = "property",
+  VEHICLE = "vehicle",
   MACHINERY = "machinery",
   INVENTORY = "inventory",
-  RECEIVABLES = "receivables",
-  SECURITIES = "securities",
   GOLD = "gold",
-  VEHICLE = "vehicle",
+  SECURITIES = "securities",
+  FIXED_DEPOSITS = "fixed_deposits",
+  OTHER = "other",
+}
+
+export enum OwnershipType {
+  SOLE = "sole",
+  JOINT = "joint",
+  COMPANY = "company",
+  PARTNERSHIP = "partnership",
+}
+
+export interface ValuationReport {
+  valuerId: string
+  valuerName: string
+  valuationDate: Date
+  marketValue: number
+  forcedSaleValue: number
+  methodology: string
+  validityPeriod: number // in months
+  reportDocument: LoanDocument
 }
 
 export interface InsuranceDetails {
   policyNumber: string
-  insurer: string
+  insurerName: string
+  policyType: string
   coverageAmount: number
-  expiryDate: Date
   premiumAmount: number
+  startDate: Date
+  endDate: Date
+  beneficiary: string
+  status: string
+}
+
+export enum LegalStatus {
+  CLEAR = "clear",
+  PENDING = "pending",
+  DISPUTED = "disputed",
+  ENCUMBERED = "encumbered",
 }
 
 export interface GuarantorDetails {
@@ -252,90 +316,89 @@ export interface GuarantorDetails {
   panNumber: string
   aadharNumber: string
   address: Address
+  phoneNumber: string
+  email: string
   occupation: string
-  annualIncome: number
+  monthlyIncome: number
   netWorth: number
   creditScore?: number
   documents: LoanDocument[]
+  consentGiven: boolean
+  consentDate?: Date
 }
 
-export interface Address {
-  street: string
-  city: string
-  state: string
-  pincode: string
-  country: string
-  landmark?: string
+export interface LoanDocument {
+  id: string
+  type: DocumentType
+  name: string
+  description?: string
+  fileUrl: string
+  fileSize: number
+  mimeType: string
+  uploadedAt: Date
+  uploadedBy: string
+  verificationStatus: DocumentVerificationStatus
+  verifiedAt?: Date
+  verifiedBy?: string
+  expiryDate?: Date
+  isRequired: boolean
+  category: DocumentCategory
 }
 
-export interface ExistingLoan {
-  lenderName: string
-  loanType: string
-  sanctionedAmount: number
-  outstandingAmount: number
-  emi: number
-  interestRate: number
-  tenure: number
-  startDate: Date
-  endDate: Date
+export enum DocumentType {
+  // Identity Documents
+  PAN_CARD = "pan_card",
+  AADHAR_CARD = "aadhar_card",
+  PASSPORT = "passport",
+  DRIVING_LICENSE = "driving_license",
+  VOTER_ID = "voter_id",
+
+  // Business Documents
+  BUSINESS_REGISTRATION = "business_registration",
+  GST_CERTIFICATE = "gst_certificate",
+  UDYAM_CERTIFICATE = "udyam_certificate",
+  TRADE_LICENSE = "trade_license",
+  PARTNERSHIP_DEED = "partnership_deed",
+  MOA_AOA = "moa_aoa",
+
+  // Financial Documents
+  BANK_STATEMENT = "bank_statement",
+  ITR_RETURN = "itr_return",
+  GST_RETURN = "gst_return",
+  BALANCE_SHEET = "balance_sheet",
+  PROFIT_LOSS = "profit_loss",
+  CASH_FLOW = "cash_flow",
+  AUDIT_REPORT = "audit_report",
+
+  // Property Documents
+  PROPERTY_PAPERS = "property_papers",
+  VALUATION_REPORT = "valuation_report",
+  INSURANCE_POLICY = "insurance_policy",
+
+  // Other Documents
+  PHOTOGRAPH = "photograph",
+  SIGNATURE = "signature",
+  CANCELLED_CHEQUE = "cancelled_cheque",
+  SALARY_SLIP = "salary_slip",
+  FORM_16 = "form_16",
+  OTHER = "other",
 }
 
-export interface BankingRelationship {
-  bankName: string
-  accountType: string
-  accountNumber: string
-  relationshipDuration: number // in years
-  averageBalance: number
-  creditFacilities: string[]
+export enum DocumentVerificationStatus {
+  PENDING = "pending",
+  VERIFIED = "verified",
+  REJECTED = "rejected",
+  EXPIRED = "expired",
+  RESUBMISSION_REQUIRED = "resubmission_required",
 }
 
-export interface CreditScore {
-  score: number
-  bureau: CreditBureau
-  reportDate: Date
-  factors: CreditFactor[]
-}
-
-export enum CreditBureau {
-  CIBIL = "cibil",
-  EXPERIAN = "experian",
-  EQUIFAX = "equifax",
-  CRIF = "crif",
-}
-
-export interface CreditFactor {
-  factor: string
-  impact: "positive" | "negative" | "neutral"
-  description: string
-}
-
-export interface RiskAssessment {
-  overallRisk: RiskLevel
-  creditRisk: RiskLevel
-  businessRisk: RiskLevel
-  industryRisk: RiskLevel
-  marketRisk: RiskLevel
-  operationalRisk: RiskLevel
-  riskFactors: RiskFactor[]
-  mitigationMeasures: string[]
-  recommendedAmount: number
-  recommendedTenure: number
-  recommendedRate: number
-}
-
-export enum RiskLevel {
-  LOW = "low",
-  MEDIUM = "medium",
-  HIGH = "high",
-  VERY_HIGH = "very_high",
-}
-
-export interface RiskFactor {
-  category: string
-  description: string
-  severity: RiskLevel
-  probability: number
-  impact: number
+export enum DocumentCategory {
+  IDENTITY = "identity",
+  BUSINESS = "business",
+  FINANCIAL = "financial",
+  COLLATERAL = "collateral",
+  GUARANTOR = "guarantor",
+  OTHER = "other",
 }
 
 export interface RepaymentSchedule {
@@ -348,124 +411,71 @@ export interface RepaymentSchedule {
   status: RepaymentStatus
   paidDate?: Date
   paidAmount?: number
-  penaltyAmount?: number
+  lateFee?: number
+  daysOverdue?: number
 }
 
 export enum RepaymentStatus {
-  PENDING = "pending",
+  UPCOMING = "upcoming",
+  DUE = "due",
   PAID = "paid",
-  OVERDUE = "overdue",
   PARTIAL = "partial",
+  OVERDUE = "overdue",
+  WAIVED = "waived",
 }
 
-// Loan Product Types
-export interface LoanProduct {
-  id: string
-  name: string
-  type: LoanType
+export interface DisbursementDetails {
+  disbursementDate: Date
+  disbursedAmount: number
+  disbursementMethod: DisbursementMethod
+  bankAccount: BankAccountDetails
+  processingFee: number
+  stampDuty: number
+  otherCharges: number
+  netDisbursement: number
+  disbursementReference: string
+  status: DisbursementStatus
+}
+
+export enum DisbursementMethod {
+  NEFT = "neft",
+  RTGS = "rtgs",
+  IMPS = "imps",
+  CHEQUE = "cheque",
+  DEMAND_DRAFT = "demand_draft",
+}
+
+export interface BankAccountDetails {
+  accountNumber: string
+  ifscCode: string
+  bankName: string
+  branchName: string
+  accountHolderName: string
+  accountType: string
+}
+
+export enum DisbursementStatus {
+  PENDING = "pending",
+  PROCESSED = "processed",
+  COMPLETED = "completed",
+  FAILED = "failed",
+  CANCELLED = "cancelled",
+}
+
+export interface SeasonalityInfo {
+  peakMonths: number[]
+  lowMonths: number[]
+  seasonalityFactor: number
   description: string
-  minAmount: number
-  maxAmount: number
-  minTenure: number
-  maxTenure: number
-  interestRateRange: {
-    min: number
-    max: number
-  }
-  processingFee: {
-    percentage?: number
-    fixedAmount?: number
-    minAmount?: number
-    maxAmount?: number
-  }
-  eligibilityCriteria: EligibilityCriteria
-  requiredDocuments: LoanDocumentType[]
-  features: string[]
-  benefits: string[]
-  isActive: boolean
-  targetSegment: string[]
 }
 
-export interface EligibilityCriteria {
-  minBusinessAge: number // in years
-  minAnnualTurnover: number
-  minCreditScore?: number
-  maxExistingEMI?: number
-  industryTypes: string[]
-  businessTypes: string[]
-  geographicRestrictions?: string[]
-  otherCriteria: string[]
-}
-
-// Government Scheme Types
-export interface GovernmentScheme {
-  id: string
-  name: string
-  type: GovernmentSchemeType
-  description: string
-  benefits: SchemeBenefit[]
-  eligibility: SchemeEligibility
-  applicationProcess: ApplicationStep[]
-  requiredDocuments: LoanDocumentType[]
-  subsidyDetails?: SubsidyDetails
-  isActive: boolean
-  validFrom: Date
-  validTo?: Date
-}
-
-export enum GovernmentSchemeType {
-  MUDRA = "mudra",
-  PMEGP = "pmegp",
-  STAND_UP_INDIA = "stand_up_india",
-  CGTMSE = "cgtmse",
-  MSME_DEVELOPMENT = "msme_development",
-  STARTUP_INDIA = "startup_india",
-}
-
-export interface SchemeBenefit {
-  type: BenefitType
-  description: string
-  value?: number
-  percentage?: number
-}
-
-export enum BenefitType {
-  SUBSIDY = "subsidy",
-  INTEREST_SUBVENTION = "interest_subvention",
-  GUARANTEE = "guarantee",
-  TAX_BENEFIT = "tax_benefit",
-  COLLATERAL_FREE = "collateral_free",
-}
-
-export interface SchemeEligibility {
-  businessTypes: string[]
-  categories: string[] // SC/ST/Women/Minority etc.
-  maxProjectCost: number
-  minOwnContribution: number
-  geographicRestrictions?: string[]
-  otherCriteria: string[]
-}
-
-export interface ApplicationStep {
-  stepNumber: number
-  title: string
-  description: string
-  estimatedTime: string
-  requiredDocuments: LoanDocumentType[]
-}
-
-export interface SubsidyDetails {
-  percentage: number
-  maxAmount: number
-  disbursementSchedule: SubsidyDisbursement[]
-  conditions: string[]
-}
-
-export interface SubsidyDisbursement {
-  milestone: string
-  percentage: number
-  amount: number
-  requiredDocuments: string[]
+export interface Address {
+  street: string
+  city: string
+  state: string
+  pincode: string
+  country: string
+  landmark?: string
 }
 
 // Loan Analytics Types
@@ -474,79 +484,176 @@ export interface LoanAnalytics {
   approvedApplications: number
   rejectedApplications: number
   disbursedAmount: number
-  averageProcessingTime: number
+  averageLoanAmount: number
+  averageProcessingTime: number // in days
   approvalRate: number
   defaultRate: number
   portfolioHealth: PortfolioHealth
-  trendsData: LoanTrend[]
+  monthlyTrends: MonthlyLoanTrend[]
+  loanTypeDistribution: LoanTypeDistribution[]
+  riskDistribution: RiskDistribution[]
 }
 
 export interface PortfolioHealth {
   totalOutstanding: number
-  performingAssets: number
-  nonPerformingAssets: number
-  npaRatio: number
-  provisionCoverage: number
+  currentLoans: number
+  overdueLoans: number
+  npaLoans: number
+  npaPercentage: number
+  provisionRequired: number
 }
 
-export interface LoanTrend {
-  period: string
+export interface MonthlyLoanTrend {
+  month: string
   applications: number
   approvals: number
   disbursements: number
   collections: number
 }
 
-// API Request/Response Types
-export interface CreateLoanApplicationRequest {
-  businessId: string
+export interface LoanTypeDistribution {
+  loanType: LoanType
+  count: number
+  amount: number
+  percentage: number
+}
+
+export interface RiskDistribution {
+  riskCategory: RiskCategory
+  count: number
+  amount: number
+  percentage: number
+}
+
+export enum RiskCategory {
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+  VERY_HIGH = "very_high",
+}
+
+// Loan Officer Types
+export interface LoanOfficer {
+  id: string
+  name: string
+  email: string
+  phoneNumber: string
+  employeeId: string
+  designation: string
+  department: string
+  branch?: string
+  specialization: LoanType[]
+  maxLoanLimit: number
+  activeLoans: number
+  completedLoans: number
+  approvalAuthority: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+// Loan Product Types
+export interface LoanProduct {
+  id: string
+  name: string
+  description: string
+  loanType: LoanType
+  minAmount: number
+  maxAmount: number
+  minTenure: number // in months
+  maxTenure: number // in months
+  interestRateMin: number
+  interestRateMax: number
+  processingFeePercentage: number
+  eligibilityCriteria: EligibilityCriteria
+  requiredDocuments: DocumentType[]
+  features: string[]
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface EligibilityCriteria {
+  minAge: number
+  maxAge: number
+  minBusinessVintage: number // in months
+  minAnnualTurnover: number
+  minCreditScore?: number
+  maxExistingEMI?: number
+  businessTypes: string[]
+  excludedBusinessTypes?: string[]
+  geographicRestrictions?: string[]
+}
+
+// API Response Types
+export interface LoanApplicationResponse {
+  success: boolean
+  data?: LoanApplication
+  error?: string
+  validationErrors?: Record<string, string[]>
+}
+
+export interface LoanListResponse {
+  success: boolean
+  data?: {
+    loans: LoanApplication[]
+    total: number
+    page: number
+    limit: number
+    hasMore: boolean
+  }
+  error?: string
+}
+
+export interface LoanAnalyticsResponse {
+  success: boolean
+  data?: LoanAnalytics
+  error?: string
+}
+
+// Form Types
+export interface LoanApplicationForm {
   loanType: LoanType
   amount: number
   purpose: LoanPurpose
   tenure: number
   businessDetails: Partial<BusinessLoanDetails>
+  applicantDetails: ApplicantDetails
   financialDetails: Partial<FinancialDetails>
+  collateral?: Partial<CollateralDetails>[]
+  guarantors?: Partial<GuarantorDetails>[]
 }
 
-export interface UpdateLoanApplicationRequest {
-  status?: LoanApplicationStatus
-  stage?: LoanProcessingStage
-  documents?: LoanDocument[]
-  remarks?: string
-  approvedAmount?: number
-  approvedTenure?: number
-  interestRate?: number
+export interface ApplicantDetails {
+  firstName: string
+  lastName: string
+  email: string
+  phoneNumber: string
+  dateOfBirth: Date
+  panNumber: string
+  aadharNumber: string
+  address: Address
+  maritalStatus: string
+  qualification: string
+  experience: number
 }
 
-export interface LoanApplicationResponse {
-  application: LoanApplication
-  eligibleProducts: LoanProduct[]
-  governmentSchemes: GovernmentScheme[]
-  nextSteps: ApplicationStep[]
-}
-
-export interface LoanDashboardData {
-  applications: LoanApplication[]
-  analytics: LoanAnalytics
-  recentActivity: LoanActivity[]
-  upcomingPayments: RepaymentSchedule[]
-}
-
-export interface LoanActivity {
-  id: string
-  type: ActivityType
-  description: string
+// Webhook Types
+export interface LoanWebhookEvent {
+  eventType: LoanEventType
+  loanId: string
   timestamp: Date
-  userId: string
-  applicationId: string
-  metadata: Record<string, any>
+  data: Record<string, any>
+  source: string
 }
 
-export enum ActivityType {
+export enum LoanEventType {
   APPLICATION_SUBMITTED = "application_submitted",
-  DOCUMENT_UPLOADED = "document_uploaded",
-  STATUS_CHANGED = "status_changed",
-  PAYMENT_MADE = "payment_made",
-  REMINDER_SENT = "reminder_sent",
-  FIELD_VISIT = "field_visit",
+  DOCUMENTS_UPLOADED = "documents_uploaded",
+  VERIFICATION_COMPLETED = "verification_completed",
+  LOAN_APPROVED = "loan_approved",
+  LOAN_REJECTED = "loan_rejected",
+  LOAN_DISBURSED = "loan_disbursed",
+  PAYMENT_RECEIVED = "payment_received",
+  PAYMENT_OVERDUE = "payment_overdue",
+  LOAN_CLOSED = "loan_closed",
 }
