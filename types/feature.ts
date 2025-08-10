@@ -1,273 +1,262 @@
-import type React from "react"
-/**
- * Feature flag and service feature types for MSMEBazaar
- * Defines the structure for feature management and access control
- */
+export type UserRole = "free_user" | "pro_user" | "business_owner" | "vendor" | "buyer" | "admin" | "super_admin"
 
-/**
- * Feature flag interface for controlling feature rollouts
- */
+export type FeatureCategory =
+  | "core"
+  | "business"
+  | "analytics"
+  | "communication"
+  | "marketplace"
+  | "financial"
+  | "admin"
+
+export type AccessLevel = "none" | "limited" | "full"
+
+export interface Feature {
+  id: string
+  name: string
+  description: string
+  category: FeatureCategory
+  isProFeature: boolean
+  requiredRole?: UserRole
+  enabled: boolean
+  beta?: boolean
+  comingSoon?: boolean
+  icon?: string
+  order?: number
+}
+
+export interface FeatureAccess {
+  featureId: string
+  hasAccess: boolean
+  accessLevel: AccessLevel
+  reason?: "role_required" | "pro_required" | "disabled" | "beta_access" | "coming_soon"
+  upgradeRequired?: boolean
+  requiredRole?: UserRole
+}
+
 export interface FeatureFlag {
   id: string
-  key: string
   name: string
-  description?: string
+  description: string
   enabled: boolean
   rolloutPercentage?: number
-  targetAudience?: string[]
-  conditions?: Record<string, any>
-  createdAt: string
-  updatedAt: string
-  createdBy: string
-}
-
-/**
- * Service feature interface for Pro/role-based features
- */
-export interface ServiceFeature {
-  id: string
-  serviceId: string
-  name: string
-  key: string
-  description?: string
-  enabled: boolean
-  requiresPro: boolean
-  allowedRoles: string[]
+  targetRoles?: UserRole[]
+  targetUsers?: string[]
+  environment?: "development" | "staging" | "production"
+  startDate?: Date
+  endDate?: Date
   metadata?: Record<string, any>
-  createdAt: string
-  updatedAt: string
 }
 
-/**
- * Feature access result interface
- */
-export interface FeatureAccess {
-  hasAccess: boolean
-  reason?: string
-  requiresUpgrade?: boolean
-  missingRoles?: string[]
-  featureDetails?: ServiceFeature
-}
-
-/**
- * Feature gate configuration interface
- */
-export interface FeatureGateConfig {
-  featureKey: string
-  requiresPro?: boolean
-  allowedRoles?: string[]
-  customConditions?: (user: any) => boolean
-  fallbackComponent?: React.ComponentType<any>
-  upgradePrompt?: {
-    title: string
-    description: string
-    ctaText: string
-    ctaAction: () => void
-  }
-}
-
-/**
- * Feature category enum for organizing features
- */
-export enum FeatureCategory {
-  CORE = "core",
-  PRO = "pro",
-  ADMIN = "admin",
-  EXPERIMENTAL = "experimental",
-  DEPRECATED = "deprecated",
-}
-
-/**
- * Feature status enum
- */
-export enum FeatureStatus {
-  ACTIVE = "active",
-  INACTIVE = "inactive",
-  BETA = "beta",
-  DEPRECATED = "deprecated",
-  COMING_SOON = "coming_soon",
-}
-
-/**
- * Feature environment enum
- */
-export enum FeatureEnvironment {
-  DEVELOPMENT = "development",
-  STAGING = "staging",
-  PRODUCTION = "production",
-}
-
-/**
- * Extended feature flag with additional metadata
- */
-export interface ExtendedFeatureFlag extends FeatureFlag {
-  category: FeatureCategory
-  status: FeatureStatus
-  environment: FeatureEnvironment[]
-  dependencies?: string[]
-  tags?: string[]
-  analytics?: {
-    usageCount: number
-    lastUsed?: string
-    conversionRate?: number
-  }
-}
-
-/**
- * Feature usage analytics interface
- */
-export interface FeatureUsageAnalytics {
-  featureKey: string
+export interface FeatureUsage {
+  featureId: string
   userId: string
-  timestamp: string
-  action: "viewed" | "used" | "upgraded" | "blocked"
-  metadata?: Record<string, any>
-}
-
-/**
- * Feature rollout strategy interface
- */
-export interface FeatureRolloutStrategy {
-  type: "percentage" | "user_list" | "role_based" | "geographic" | "custom"
-  config: {
-    percentage?: number
-    userIds?: string[]
-    roles?: string[]
-    countries?: string[]
-    customRule?: string
+  usageCount: number
+  lastUsed: Date
+  monthlyUsage: number
+  dailyUsage: number
+  limits?: {
+    daily?: number
+    monthly?: number
+    total?: number
   }
 }
 
-/**
- * Feature experiment interface for A/B testing
- */
+export interface FeatureLimit {
+  featureId: string
+  role: UserRole
+  isPro: boolean
+  limits: {
+    daily?: number
+    monthly?: number
+    total?: number
+  }
+  resetPeriod?: "daily" | "monthly" | "yearly"
+}
+
+export interface FeatureConfig {
+  features: Feature[]
+  featureFlags: FeatureFlag[]
+  featureLimits: FeatureLimit[]
+  roleHierarchy: Record<UserRole, UserRole[]>
+}
+
+export interface FeatureAccessRequest {
+  userId: string
+  featureId: string
+  requestedAt: Date
+  reason?: string
+  status: "pending" | "approved" | "rejected"
+  reviewedBy?: string
+  reviewedAt?: Date
+  reviewNotes?: string
+}
+
+export interface FeatureAnalytics {
+  featureId: string
+  totalUsers: number
+  activeUsers: number
+  usageByRole: Record<UserRole, number>
+  usageByPlan: {
+    free: number
+    pro: number
+  }
+  conversionRate?: number
+  retentionRate?: number
+  averageUsagePerUser: number
+  peakUsageTime?: string
+  geographicUsage?: Record<string, number>
+}
+
+export interface FeatureNotification {
+  id: string
+  featureId: string
+  type: "new_feature" | "feature_update" | "deprecation" | "maintenance"
+  title: string
+  message: string
+  targetRoles?: UserRole[]
+  targetUsers?: string[]
+  priority: "low" | "medium" | "high" | "critical"
+  scheduledAt?: Date
+  expiresAt?: Date
+  actionRequired?: boolean
+  actionUrl?: string
+  actionText?: string
+}
+
+export interface FeatureRollout {
+  featureId: string
+  rolloutStrategy: "immediate" | "gradual" | "targeted" | "beta"
+  rolloutPercentage: number
+  targetSegments?: {
+    roles?: UserRole[]
+    regions?: string[]
+    businessTypes?: string[]
+    userIds?: string[]
+  }
+  startDate: Date
+  endDate?: Date
+  rollbackConditions?: {
+    errorRate?: number
+    userComplaints?: number
+    performanceThreshold?: number
+  }
+  metrics?: {
+    adoptionRate: number
+    errorRate: number
+    userSatisfaction: number
+    performanceImpact: number
+  }
+}
+
+export interface FeaturePermission {
+  featureId: string
+  role: UserRole
+  permissions: {
+    read: boolean
+    write: boolean
+    delete: boolean
+    admin: boolean
+  }
+  conditions?: {
+    requiresPro?: boolean
+    requiresVerification?: boolean
+    businessTypeRestrictions?: string[]
+    regionRestrictions?: string[]
+  }
+}
+
+export interface FeatureBundle {
+  id: string
+  name: string
+  description: string
+  features: string[]
+  price?: number
+  currency?: string
+  billingPeriod?: "monthly" | "yearly"
+  targetRoles: UserRole[]
+  popular?: boolean
+  recommended?: boolean
+  trialPeriod?: number
+  discountPercentage?: number
+}
+
 export interface FeatureExperiment {
   id: string
   name: string
   description: string
-  featureKey: string
+  featureId: string
   variants: {
+    id: string
     name: string
-    weight: number
+    description: string
     config: Record<string, any>
+    trafficPercentage: number
   }[]
-  startDate: string
-  endDate?: string
-  status: "draft" | "running" | "completed" | "paused"
+  status: "draft" | "running" | "paused" | "completed"
+  startDate: Date
+  endDate?: Date
+  targetAudience?: {
+    roles?: UserRole[]
+    regions?: string[]
+    userSegments?: string[]
+  }
   metrics: {
-    conversionGoal: string
-    successMetric: string
+    conversionRate: number
+    engagementRate: number
+    retentionRate: number
+    revenueImpact: number
   }
+  winningVariant?: string
 }
 
-/**
- * User feature preferences interface
- */
-export interface UserFeaturePreferences {
-  userId: string
-  preferences: {
-    featureKey: string
-    enabled: boolean
-    customConfig?: Record<string, any>
-  }[]
-  updatedAt: string
-}
+// Utility types for feature management
+export type FeatureAccessMap = Record<string, FeatureAccess>
+export type FeatureUsageMap = Record<string, FeatureUsage>
+export type RoleFeatureMatrix = Record<UserRole, string[]>
 
-/**
- * Feature notification interface
- */
-export interface FeatureNotification {
-  id: string
-  featureKey: string
-  type: "new_feature" | "feature_update" | "deprecation" | "upgrade_required"
-  title: string
-  message: string
-  actionUrl?: string
-  actionText?: string
-  targetRoles?: string[]
-  targetUsers?: string[]
-  expiresAt?: string
-  createdAt: string
-}
-
-/**
- * Feature audit log interface
- */
-export interface FeatureAuditLog {
-  id: string
-  featureKey: string
-  action: "created" | "updated" | "enabled" | "disabled" | "deleted"
-  userId: string
-  userRole: string
-  changes?: Record<string, { from: any; to: any }>
-  reason?: string
-  timestamp: string
-  ipAddress?: string
-  userAgent?: string
-}
-
-/**
- * Feature dependency interface
- */
-export interface FeatureDependency {
-  featureKey: string
-  dependsOn: string[]
-  conflictsWith?: string[]
-  requiredVersion?: string
-}
-
-/**
- * Feature configuration schema interface
- */
-export interface FeatureConfigSchema {
-  featureKey: string
-  schema: {
-    type: "object" | "array" | "string" | "number" | "boolean"
-    properties?: Record<string, any>
-    required?: string[]
-    default?: any
-  }
-  validation?: {
-    rules: string[]
-    customValidator?: string
-  }
-}
-
-/**
- * Feature toggle response interface
- */
-export interface FeatureToggleResponse {
+// API response types
+export interface FeatureAccessResponse {
   success: boolean
-  featureKey: string
-  enabled: boolean
-  config?: Record<string, any>
+  data: FeatureAccessMap
   message?: string
-  error?: string
+  timestamp: Date
 }
 
-/**
- * Bulk feature operation interface
- */
-export interface BulkFeatureOperation {
-  operation: "enable" | "disable" | "update" | "delete"
-  featureKeys: string[]
-  config?: Record<string, any>
-  reason?: string
+export interface FeatureUsageResponse {
+  success: boolean
+  data: FeatureUsageMap
+  message?: string
+  timestamp: Date
 }
 
-/**
- * Feature health check interface
- */
-export interface FeatureHealthCheck {
-  featureKey: string
-  status: "healthy" | "degraded" | "unhealthy"
-  lastChecked: string
-  metrics: {
-    errorRate: number
-    responseTime: number
-    usageCount: number
-  }
-  issues?: string[]
+export interface FeatureConfigResponse {
+  success: boolean
+  data: FeatureConfig
+  version: string
+  lastUpdated: Date
+  message?: string
 }
 
-export default FeatureFlag
+// Event types for feature tracking
+export interface FeatureEvent {
+  type: "feature_accessed" | "feature_used" | "feature_blocked" | "upgrade_prompted"
+  featureId: string
+  userId: string
+  timestamp: Date
+  metadata?: Record<string, any>
+  sessionId?: string
+  source?: "web" | "mobile" | "api"
+}
+
+export interface FeatureUpgradePrompt {
+  featureId: string
+  currentPlan: "free" | "pro"
+  requiredPlan: "pro" | "enterprise"
+  benefits: string[]
+  ctaText: string
+  ctaUrl: string
+  dismissible: boolean
+  showCount?: number
+  maxShows?: number
+}
