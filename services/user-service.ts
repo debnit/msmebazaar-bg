@@ -1,8 +1,17 @@
 "use client"
 
 import apiClient, { type ApiResponse } from "@/utils/api-client"
-import type { User } from "@/types/user"
-import type { BusinessProfile } from "@/types/business"
+import type {
+  User,
+  UserProfile,
+  UserAddress,
+  UserPreferences,
+  UserActivity,
+  UserDocument,
+  UserStats,
+  NotificationSettings,
+} from "@/types/user"
+import type { PaginatedResponse } from "@/types/api"
 
 // User profile types
 export interface UserProfileUpdate {
@@ -22,644 +31,196 @@ export interface UserProfileUpdate {
   }
 }
 
-export interface UserAddress {
-  id?: string
-  type: "home" | "work" | "billing" | "shipping"
-  label?: string
-  street: string
-  apartment?: string
-  city: string
-  state: string
-  pincode: string
-  country: string
-  isDefault: boolean
-  landmark?: string
-}
-
-export interface UserPreferences {
-  language: string
-  timezone: string
-  currency: string
-  dateFormat: string
-  notifications: {
-    email: {
-      marketing: boolean
-      orderUpdates: boolean
-      securityAlerts: boolean
-      newsletter: boolean
-      productUpdates: boolean
-    }
-    sms: {
-      orderUpdates: boolean
-      securityAlerts: boolean
-      promotions: boolean
-    }
-    push: {
-      orderUpdates: boolean
-      messages: boolean
-      promotions: boolean
-      reminders: boolean
-    }
-    whatsapp: {
-      orderUpdates: boolean
-      promotions: boolean
-      support: boolean
-    }
-  }
-  privacy: {
-    profileVisibility: "public" | "private" | "business_only"
-    showEmail: boolean
-    showPhone: boolean
-    allowBusinessContact: boolean
-    dataProcessingConsent: boolean
-  }
-  dashboard: {
-    defaultView: "overview" | "analytics" | "orders" | "products"
-    widgetPreferences: Record<string, boolean>
-    theme: "light" | "dark" | "system"
-  }
-}
-
-export interface UserActivity {
-  id: string
-  type: "login" | "profile_update" | "order" | "payment" | "business_action" | "security"
-  description: string
-  metadata?: Record<string, any>
-  ipAddress: string
-  userAgent: string
-  location?: string
-  timestamp: string
-}
-
-export interface UserStats {
-  totalOrders: number
-  totalSpent: number
-  businessProfileViews: number
-  lastLoginAt: string
-  accountAge: number
-  verificationStatus: {
-    email: boolean
-    phone: boolean
-    business: boolean
-    identity: boolean
-  }
-  subscriptionInfo: {
-    plan: string
-    status: string
-    expiresAt?: string
-    features: string[]
-  }
-}
-
-export interface UserDocument {
-  id: string
-  type: "pan" | "aadhar" | "gst" | "business_license" | "bank_statement" | "other"
-  name: string
-  fileName: string
-  fileUrl: string
-  fileSize: number
-  mimeType: string
-  status: "pending" | "verified" | "rejected"
-  uploadedAt: string
-  verifiedAt?: string
-  rejectionReason?: string
-  expiresAt?: string
-}
-
-export interface UserNotificationSettings {
-  channels: {
-    email: boolean
-    sms: boolean
-    push: boolean
-    whatsapp: boolean
-  }
-  categories: {
-    orders: boolean
-    payments: boolean
-    marketing: boolean
-    security: boolean
-    business: boolean
-    system: boolean
-  }
-  frequency: {
-    immediate: boolean
-    daily: boolean
-    weekly: boolean
-    monthly: boolean
-  }
-  quietHours: {
-    enabled: boolean
-    startTime: string
-    endTime: string
-    timezone: string
-  }
-}
-
 // User Service Class
-class UserService {
-  private readonly baseUrl = "/users"
-
-  /**
-   * Get user profile by ID
-   */
-  async getUserProfile(userId?: string): Promise<ApiResponse<User>> {
-    try {
-      const endpoint = userId ? `${this.baseUrl}/${userId}` : `${this.baseUrl}/me`
-      return await apiClient.get<User>(endpoint)
-    } catch (error) {
-      console.error("Get user profile error:", error)
-      throw error
-    }
+export class UserService {
+  // Profile Management
+  static async getProfile(): Promise<ApiResponse<UserProfile>> {
+    return apiClient.get("/user/profile")
   }
 
-  /**
-   * Update user profile
-   */
-  async updateProfile(data: UserProfileUpdate): Promise<ApiResponse<User>> {
-    try {
-      const formData = new FormData()
-
-      // Handle file upload
-      if (data.profilePicture) {
-        formData.append("profilePicture", data.profilePicture)
-      }
-
-      // Add other fields
-      Object.entries(data).forEach(([key, value]) => {
-        if (key !== "profilePicture" && value !== undefined) {
-          if (typeof value === "object") {
-            formData.append(key, JSON.stringify(value))
-          } else {
-            formData.append(key, String(value))
-          }
-        }
-      })
-
-      const response = await apiClient.put<User>(`${this.baseUrl}/me`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
-
-      // Update stored user data
-      if (response.success && response.data) {
-        localStorage.setItem("user_data", JSON.stringify(response.data))
-      }
-
-      return response
-    } catch (error) {
-      console.error("Update profile error:", error)
-      throw error
-    }
+  static async updateProfile(data: Partial<UserProfile>): Promise<ApiResponse<UserProfile>> {
+    return apiClient.put("/user/profile", data)
   }
 
-  /**
-   * Upload profile picture
-   */
-  async uploadProfilePicture(file: File): Promise<ApiResponse<{ profilePictureUrl: string }>> {
-    try {
-      const formData = new FormData()
-      formData.append("profilePicture", file)
-
-      return await apiClient.post(`${this.baseUrl}/me/avatar`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
-    } catch (error) {
-      console.error("Upload profile picture error:", error)
-      throw error
-    }
+  static async uploadProfilePicture(file: File): Promise<ApiResponse<{ url: string }>> {
+    const formData = new FormData()
+    formData.append("avatar", file)
+    return apiClient.post("/user/profile/avatar", formData)
   }
 
-  /**
-   * Delete profile picture
-   */
-  async deleteProfilePicture(): Promise<ApiResponse<void>> {
-    try {
-      return await apiClient.delete(`${this.baseUrl}/me/avatar`)
-    } catch (error) {
-      console.error("Delete profile picture error:", error)
-      throw error
-    }
+  static async deleteProfilePicture(): Promise<ApiResponse<void>> {
+    return apiClient.delete("/user/profile/avatar")
   }
 
-  /**
-   * Get user addresses
-   */
-  async getAddresses(): Promise<ApiResponse<UserAddress[]>> {
-    try {
-      return await apiClient.get<UserAddress[]>(`${this.baseUrl}/me/addresses`)
-    } catch (error) {
-      console.error("Get addresses error:", error)
-      throw error
-    }
+  // Address Management
+  static async getAddresses(): Promise<ApiResponse<UserAddress[]>> {
+    return apiClient.get("/user/addresses")
   }
 
-  /**
-   * Add new address
-   */
-  async addAddress(address: Omit<UserAddress, "id">): Promise<ApiResponse<UserAddress>> {
-    try {
-      return await apiClient.post<UserAddress>(`${this.baseUrl}/me/addresses`, address)
-    } catch (error) {
-      console.error("Add address error:", error)
-      throw error
-    }
+  static async createAddress(
+    address: Omit<UserAddress, "id" | "createdAt" | "updatedAt">,
+  ): Promise<ApiResponse<UserAddress>> {
+    return apiClient.post("/user/addresses", address)
   }
 
-  /**
-   * Update address
-   */
-  async updateAddress(addressId: string, address: Partial<UserAddress>): Promise<ApiResponse<UserAddress>> {
-    try {
-      return await apiClient.put<UserAddress>(`${this.baseUrl}/me/addresses/${addressId}`, address)
-    } catch (error) {
-      console.error("Update address error:", error)
-      throw error
-    }
+  static async updateAddress(id: string, address: Partial<UserAddress>): Promise<ApiResponse<UserAddress>> {
+    return apiClient.put(`/user/addresses/${id}`, address)
   }
 
-  /**
-   * Delete address
-   */
-  async deleteAddress(addressId: string): Promise<ApiResponse<void>> {
-    try {
-      return await apiClient.delete(`${this.baseUrl}/me/addresses/${addressId}`)
-    } catch (error) {
-      console.error("Delete address error:", error)
-      throw error
-    }
+  static async deleteAddress(id: string): Promise<ApiResponse<void>> {
+    return apiClient.delete(`/user/addresses/${id}`)
   }
 
-  /**
-   * Set default address
-   */
-  async setDefaultAddress(addressId: string, type: UserAddress["type"]): Promise<ApiResponse<void>> {
-    try {
-      return await apiClient.put(`${this.baseUrl}/me/addresses/${addressId}/default`, { type })
-    } catch (error) {
-      console.error("Set default address error:", error)
-      throw error
-    }
+  static async setDefaultAddress(id: string): Promise<ApiResponse<void>> {
+    return apiClient.patch(`/user/addresses/${id}/default`)
   }
 
-  /**
-   * Get user preferences
-   */
-  async getPreferences(): Promise<ApiResponse<UserPreferences>> {
-    try {
-      return await apiClient.get<UserPreferences>(`${this.baseUrl}/me/preferences`)
-    } catch (error) {
-      console.error("Get preferences error:", error)
-      throw error
-    }
+  // User Preferences
+  static async getPreferences(): Promise<ApiResponse<UserPreferences>> {
+    return apiClient.get("/user/preferences")
   }
 
-  /**
-   * Update user preferences
-   */
-  async updatePreferences(preferences: Partial<UserPreferences>): Promise<ApiResponse<UserPreferences>> {
-    try {
-      return await apiClient.put<UserPreferences>(`${this.baseUrl}/me/preferences`, preferences)
-    } catch (error) {
-      console.error("Update preferences error:", error)
-      throw error
-    }
+  static async updatePreferences(preferences: Partial<UserPreferences>): Promise<ApiResponse<UserPreferences>> {
+    return apiClient.put("/user/preferences", preferences)
   }
 
-  /**
-   * Get user activity log
-   */
-  async getActivity(params?: {
+  // Activity & History
+  static async getActivity(params?: {
     page?: number
     limit?: number
-    type?: UserActivity["type"]
+    type?: string
     startDate?: string
     endDate?: string
-  }): Promise<ApiResponse<{ activities: UserActivity[]; total: number; page: number; totalPages: number }>> {
-    try {
-      const queryParams = new URLSearchParams()
-      if (params?.page) queryParams.append("page", String(params.page))
-      if (params?.limit) queryParams.append("limit", String(params.limit))
-      if (params?.type) queryParams.append("type", params.type)
-      if (params?.startDate) queryParams.append("startDate", params.startDate)
-      if (params?.endDate) queryParams.append("endDate", params.endDate)
-
-      const query = queryParams.toString()
-      const endpoint = `${this.baseUrl}/me/activity${query ? `?${query}` : ""}`
-
-      return await apiClient.get(endpoint)
-    } catch (error) {
-      console.error("Get activity error:", error)
-      throw error
-    }
+  }): Promise<ApiResponse<PaginatedResponse<UserActivity>>> {
+    return apiClient.get("/user/activity", { params })
   }
 
-  /**
-   * Get user statistics
-   */
-  async getStats(): Promise<ApiResponse<UserStats>> {
-    try {
-      return await apiClient.get<UserStats>(`${this.baseUrl}/me/stats`)
-    } catch (error) {
-      console.error("Get stats error:", error)
-      throw error
-    }
+  // Document Management
+  static async getDocuments(): Promise<ApiResponse<UserDocument[]>> {
+    return apiClient.get("/user/documents")
   }
 
-  /**
-   * Get user documents
-   */
-  async getDocuments(): Promise<ApiResponse<UserDocument[]>> {
-    try {
-      return await apiClient.get<UserDocument[]>(`${this.baseUrl}/me/documents`)
-    } catch (error) {
-      console.error("Get documents error:", error)
-      throw error
+  static async uploadDocument(data: {
+    type: string
+    file: File
+    metadata?: Record<string, any>
+  }): Promise<ApiResponse<UserDocument>> {
+    const formData = new FormData()
+    formData.append("document", data.file)
+    formData.append("type", data.type)
+    if (data.metadata) {
+      formData.append("metadata", JSON.stringify(data.metadata))
     }
+    return apiClient.post("/user/documents", formData)
   }
 
-  /**
-   * Upload document
-   */
-  async uploadDocument(
-    file: File,
-    type: UserDocument["type"],
-    metadata?: Record<string, any>,
-  ): Promise<ApiResponse<UserDocument>> {
-    try {
-      const formData = new FormData()
-      formData.append("document", file)
-      formData.append("type", type)
-      if (metadata) {
-        formData.append("metadata", JSON.stringify(metadata))
-      }
-
-      return await apiClient.post<UserDocument>(`${this.baseUrl}/me/documents`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
-    } catch (error) {
-      console.error("Upload document error:", error)
-      throw error
-    }
+  static async deleteDocument(id: string): Promise<ApiResponse<void>> {
+    return apiClient.delete(`/user/documents/${id}`)
   }
 
-  /**
-   * Delete document
-   */
-  async deleteDocument(documentId: string): Promise<ApiResponse<void>> {
-    try {
-      return await apiClient.delete(`${this.baseUrl}/me/documents/${documentId}`)
-    } catch (error) {
-      console.error("Delete document error:", error)
-      throw error
-    }
+  static async verifyDocument(id: string): Promise<ApiResponse<UserDocument>> {
+    return apiClient.post(`/user/documents/${id}/verify`)
   }
 
-  /**
-   * Get notification settings
-   */
-  async getNotificationSettings(): Promise<ApiResponse<UserNotificationSettings>> {
-    try {
-      return await apiClient.get<UserNotificationSettings>(`${this.baseUrl}/me/notifications/settings`)
-    } catch (error) {
-      console.error("Get notification settings error:", error)
-      throw error
-    }
+  // User Statistics
+  static async getStats(): Promise<ApiResponse<UserStats>> {
+    return apiClient.get("/user/stats")
   }
 
-  /**
-   * Update notification settings
-   */
-  async updateNotificationSettings(
-    settings: Partial<UserNotificationSettings>,
-  ): Promise<ApiResponse<UserNotificationSettings>> {
-    try {
-      return await apiClient.put<UserNotificationSettings>(`${this.baseUrl}/me/notifications/settings`, settings)
-    } catch (error) {
-      console.error("Update notification settings error:", error)
-      throw error
-    }
+  // Notification Settings
+  static async getNotificationSettings(): Promise<ApiResponse<NotificationSettings>> {
+    return apiClient.get("/user/notifications/settings")
   }
 
-  /**
-   * Verify phone number
-   */
-  async verifyPhone(phoneNumber: string): Promise<ApiResponse<{ verificationId: string }>> {
-    try {
-      return await apiClient.post(`${this.baseUrl}/me/verify-phone`, { phoneNumber })
-    } catch (error) {
-      console.error("Verify phone error:", error)
-      throw error
-    }
+  static async updateNotificationSettings(
+    settings: Partial<NotificationSettings>,
+  ): Promise<ApiResponse<NotificationSettings>> {
+    return apiClient.put("/user/notifications/settings", settings)
   }
 
-  /**
-   * Confirm phone verification
-   */
-  async confirmPhoneVerification(verificationId: string, code: string): Promise<ApiResponse<User>> {
-    try {
-      const response = await apiClient.post<User>(`${this.baseUrl}/me/verify-phone/confirm`, {
-        verificationId,
-        code,
-      })
-
-      // Update stored user data
-      if (response.success && response.data) {
-        localStorage.setItem("user_data", JSON.stringify(response.data))
-      }
-
-      return response
-    } catch (error) {
-      console.error("Confirm phone verification error:", error)
-      throw error
-    }
+  // Phone Verification
+  static async sendPhoneVerificationOTP(phone: string): Promise<ApiResponse<{ otpId: string }>> {
+    return apiClient.post("/user/phone/verify/send", { phone })
   }
 
-  /**
-   * Request account deletion
-   */
-  async requestAccountDeletion(reason?: string, password?: string): Promise<ApiResponse<{ deletionId: string }>> {
-    try {
-      return await apiClient.post(`${this.baseUrl}/me/delete-request`, { reason, password })
-    } catch (error) {
-      console.error("Request account deletion error:", error)
-      throw error
-    }
+  static async verifyPhoneOTP(otpId: string, otp: string): Promise<ApiResponse<void>> {
+    return apiClient.post("/user/phone/verify/confirm", { otpId, otp })
   }
 
-  /**
-   * Cancel account deletion
-   */
-  async cancelAccountDeletion(deletionId: string): Promise<ApiResponse<void>> {
-    try {
-      return await apiClient.post(`${this.baseUrl}/me/delete-request/${deletionId}/cancel`)
-    } catch (error) {
-      console.error("Cancel account deletion error:", error)
-      throw error
-    }
+  // Account Management
+  static async changePassword(data: {
+    currentPassword: string
+    newPassword: string
+  }): Promise<ApiResponse<void>> {
+    return apiClient.post("/user/password/change", data)
   }
 
-  /**
-   * Export user data
-   */
-  async exportUserData(format: "json" | "csv" = "json"): Promise<ApiResponse<{ downloadUrl: string }>> {
-    try {
-      return await apiClient.post(`${this.baseUrl}/me/export`, { format })
-    } catch (error) {
-      console.error("Export user data error:", error)
-      throw error
-    }
+  static async deleteAccount(password: string): Promise<ApiResponse<void>> {
+    return apiClient.post("/user/account/delete", { password })
   }
 
-  /**
-   * Get business profile for user
-   */
-  async getBusinessProfile(): Promise<ApiResponse<BusinessProfile>> {
-    try {
-      return await apiClient.get<BusinessProfile>(`${this.baseUrl}/me/business`)
-    } catch (error) {
-      console.error("Get business profile error:", error)
-      throw error
-    }
+  static async exportData(): Promise<ApiResponse<{ downloadUrl: string }>> {
+    return apiClient.post("/user/data/export")
   }
 
-  /**
-   * Search users (for admin/business purposes)
-   */
-  async searchUsers(params: {
+  // Social Features
+  static async followUser(userId: string): Promise<ApiResponse<void>> {
+    return apiClient.post(`/user/${userId}/follow`)
+  }
+
+  static async unfollowUser(userId: string): Promise<ApiResponse<void>> {
+    return apiClient.delete(`/user/${userId}/follow`)
+  }
+
+  static async blockUser(userId: string): Promise<ApiResponse<void>> {
+    return apiClient.post(`/user/${userId}/block`)
+  }
+
+  static async unblockUser(userId: string): Promise<ApiResponse<void>> {
+    return apiClient.delete(`/user/${userId}/block`)
+  }
+
+  static async reportUser(userId: string, reason: string, description?: string): Promise<ApiResponse<void>> {
+    return apiClient.post(`/user/${userId}/report`, { reason, description })
+  }
+
+  // Search & Discovery
+  static async searchUsers(params: {
     query?: string
-    role?: string
-    status?: string
-    businessType?: string
     location?: string
+    businessType?: string
     page?: number
     limit?: number
-    sortBy?: string
-    sortOrder?: "asc" | "desc"
-  }): Promise<ApiResponse<{ users: User[]; total: number; page: number; totalPages: number }>> {
-    try {
-      const queryParams = new URLSearchParams()
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
-          queryParams.append(key, String(value))
-        }
-      })
-
-      const query = queryParams.toString()
-      const endpoint = `${this.baseUrl}/search${query ? `?${query}` : ""}`
-
-      return await apiClient.get(endpoint)
-    } catch (error) {
-      console.error("Search users error:", error)
-      throw error
-    }
+  }): Promise<ApiResponse<PaginatedResponse<User>>> {
+    return apiClient.get("/user/search", { params })
   }
 
-  /**
-   * Follow/Unfollow user (for business networking)
-   */
-  async followUser(userId: string): Promise<ApiResponse<void>> {
-    try {
-      return await apiClient.post(`${this.baseUrl}/${userId}/follow`)
-    } catch (error) {
-      console.error("Follow user error:", error)
-      throw error
-    }
+  static async getSuggestedUsers(limit = 10): Promise<ApiResponse<User[]>> {
+    return apiClient.get("/user/suggestions", { params: { limit } })
   }
 
-  async unfollowUser(userId: string): Promise<ApiResponse<void>> {
-    try {
-      return await apiClient.delete(`${this.baseUrl}/${userId}/follow`)
-    } catch (error) {
-      console.error("Unfollow user error:", error)
-      throw error
-    }
+  // Business Integration
+  static async linkBusinessProfile(businessId: string): Promise<ApiResponse<void>> {
+    return apiClient.post("/user/business/link", { businessId })
   }
 
-  /**
-   * Get user followers/following
-   */
-  async getFollowers(userId?: string, page = 1, limit = 20): Promise<ApiResponse<{ users: User[]; total: number }>> {
-    try {
-      const endpoint = userId ? `${this.baseUrl}/${userId}/followers` : `${this.baseUrl}/me/followers`
-      return await apiClient.get(`${endpoint}?page=${page}&limit=${limit}`)
-    } catch (error) {
-      console.error("Get followers error:", error)
-      throw error
-    }
+  static async unlinkBusinessProfile(): Promise<ApiResponse<void>> {
+    return apiClient.delete("/user/business/link")
   }
 
-  async getFollowing(userId?: string, page = 1, limit = 20): Promise<ApiResponse<{ users: User[]; total: number }>> {
-    try {
-      const endpoint = userId ? `${this.baseUrl}/${userId}/following` : `${this.baseUrl}/me/following`
-      return await apiClient.get(`${endpoint}?page=${page}&limit=${limit}`)
-    } catch (error) {
-      console.error("Get following error:", error)
-      throw error
-    }
+  // Utility Methods
+  static async checkUsernameAvailability(username: string): Promise<ApiResponse<{ available: boolean }>> {
+    return apiClient.get("/user/username/check", { params: { username } })
   }
 
-  /**
-   * Block/Unblock user
-   */
-  async blockUser(userId: string): Promise<ApiResponse<void>> {
-    try {
-      return await apiClient.post(`${this.baseUrl}/${userId}/block`)
-    } catch (error) {
-      console.error("Block user error:", error)
-      throw error
-    }
+  static async checkEmailAvailability(email: string): Promise<ApiResponse<{ available: boolean }>> {
+    return apiClient.get("/user/email/check", { params: { email } })
   }
 
-  async unblockUser(userId: string): Promise<ApiResponse<void>> {
-    try {
-      return await apiClient.delete(`${this.baseUrl}/${userId}/block`)
-    } catch (error) {
-      console.error("Unblock user error:", error)
-      throw error
-    }
-  }
-
-  /**
-   * Report user
-   */
-  async reportUser(
-    userId: string,
-    reason: string,
-    description?: string,
-    evidence?: File[],
-  ): Promise<ApiResponse<{ reportId: string }>> {
-    try {
-      const formData = new FormData()
-      formData.append("reason", reason)
-      if (description) formData.append("description", description)
-
-      if (evidence) {
-        evidence.forEach((file, index) => {
-          formData.append(`evidence_${index}`, file)
-        })
-      }
-
-      return await apiClient.post(`${this.baseUrl}/${userId}/report`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      })
-    } catch (error) {
-      console.error("Report user error:", error)
-      throw error
-    }
+  static async checkPhoneAvailability(phone: string): Promise<ApiResponse<{ available: boolean }>> {
+    return apiClient.get("/user/phone/check", { params: { phone } })
   }
 }
-
-// Create singleton instance
-const userService = new UserService()
-
-export default userService
 
 // Export types
 export type {
@@ -667,7 +228,7 @@ export type {
   UserAddress,
   UserPreferences,
   UserActivity,
-  UserStats,
   UserDocument,
-  UserNotificationSettings,
+  UserStats,
+  NotificationSettings,
 }
