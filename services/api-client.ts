@@ -13,6 +13,7 @@ interface ApiResponse<T = any> {
   data?: T
   message?: string
   error?: string
+  errors?: Record<string, string[]>
 }
 
 /**
@@ -21,6 +22,8 @@ interface ApiResponse<T = any> {
 interface ApiRequestOptions extends RequestInit {
   requiresAuth?: boolean
   timeout?: number
+  retries?: number
+  retryDelay?: number
 }
 
 /**
@@ -31,6 +34,7 @@ export class ApiError extends Error {
     message: string,
     public status: number,
     public response?: any,
+    public errors?: Record<string, string[]>,
   ) {
     super(message)
     this.name = "ApiError"
@@ -39,10 +43,12 @@ export class ApiError extends Error {
 
 /**
  * Main API client class for MSMEBazaar
- * Handles authentication, request/response interceptors, and error handling
+ * Handles authentication, request/response interceptors, error handling, and retry logic
  */
 class ApiClient {
   private baseURL: string
+  private defaultRetries = 3
+  private defaultRetryDelay = 1000
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL
@@ -90,51 +96,99 @@ class ApiClient {
     }
 
     if (!response.ok) {
+      // Handle 401 Unauthorized - clear auth state
+      if (response.status === 401) {
+        useAuthStore.getState().logout()
+      }
+
       const errorMessage = data?.message || data?.error || `HTTP ${response.status}`
-      throw new ApiError(errorMessage, response.status, data)
+      const errors = data?.errors || undefined
+
+      throw new ApiError(errorMessage, response.status, data, errors)
     }
 
     return data
   }
 
   /**
-   * Make HTTP request with timeout and error handling
+   * Sleep utility for retry delays
+   */
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  /**
+   * Check if error is retryable
+   */
+  private isRetryableError(error: ApiError): boolean {
+    // Retry on network errors, timeouts, and 5xx server errors
+    return (
+      error.status === 0 || // Network error
+      error.status === 408 || // Timeout
+      error.status === 429 || // Rate limit
+      (error.status >= 500 && error.status < 600) // Server errors
+    )
+  }
+
+  /**
+   * Make HTTP request with timeout, retry logic, and error handling
    */
   private async request<T>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
-    const { timeout = 10000, requiresAuth = true, ...fetchOptions } = options
+    const {
+      timeout = 10000,
+      requiresAuth = true,
+      retries = this.defaultRetries,
+      retryDelay = this.defaultRetryDelay,
+      ...fetchOptions
+    } = options
 
     const url = `${this.baseURL}${endpoint}`
     const headers = this.buildHeaders(options)
 
-    // Create abort controller for timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), timeout)
+    let lastError: ApiError | null = null
 
-    try {
-      const response = await fetch(url, {
-        ...fetchOptions,
-        headers,
-        signal: controller.signal,
-      })
+    // Retry logic
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      // Create abort controller for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-      clearTimeout(timeoutId)
-      return await this.handleResponse<T>(response)
-    } catch (error) {
-      clearTimeout(timeoutId)
+      try {
+        const response = await fetch(url, {
+          ...fetchOptions,
+          headers,
+          signal: controller.signal,
+        })
 
-      if (error instanceof ApiError) {
-        throw error
-      }
+        clearTimeout(timeoutId)
+        return await this.handleResponse<T>(response)
+      } catch (error) {
+        clearTimeout(timeoutId)
 
-      if (error instanceof Error) {
-        if (error.name === "AbortError") {
-          throw new ApiError("Request timeout", 408)
+        if (error instanceof ApiError) {
+          lastError = error
+        } else if (error instanceof Error) {
+          if (error.name === "AbortError") {
+            lastError = new ApiError("Request timeout", 408)
+          } else {
+            lastError = new ApiError(error.message, 0)
+          }
+        } else {
+          lastError = new ApiError("Unknown error occurred", 0)
         }
-        throw new ApiError(error.message, 0)
-      }
 
-      throw new ApiError("Unknown error occurred", 0)
+        // Don't retry on the last attempt or non-retryable errors
+        if (attempt === retries || !this.isRetryableError(lastError)) {
+          break
+        }
+
+        // Wait before retrying with exponential backoff
+        const delay = retryDelay * Math.pow(2, attempt)
+        await this.sleep(delay)
+      }
     }
+
+    throw lastError
   }
 
   /**
@@ -188,7 +242,7 @@ class ApiClient {
    * Upload file with multipart/form-data
    */
   async upload<T>(endpoint: string, formData: FormData, options?: Omit<ApiRequestOptions, "headers">): Promise<T> {
-    const { requiresAuth = true, ...fetchOptions } = options || {}
+    const { requiresAuth = true, timeout = 30000, ...fetchOptions } = options || {}
 
     const headers: HeadersInit = {}
 
@@ -202,21 +256,41 @@ class ApiClient {
 
     const url = `${this.baseURL}${endpoint}`
 
+    // Create abort controller for timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
     try {
       const response = await fetch(url, {
         ...fetchOptions,
         method: "POST",
         headers,
         body: formData,
+        signal: controller.signal,
       })
 
+      clearTimeout(timeoutId)
       return await this.handleResponse<T>(response)
     } catch (error) {
+      clearTimeout(timeoutId)
+
       if (error instanceof ApiError) {
         throw error
       }
+
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new ApiError("Upload timeout", 408)
+      }
+
       throw new ApiError("Upload failed", 0)
     }
+  }
+
+  /**
+   * Health check endpoint
+   */
+  async healthCheck(): Promise<{ status: string; timestamp: string }> {
+    return this.get("/health", { requiresAuth: false, timeout: 5000 })
   }
 }
 
