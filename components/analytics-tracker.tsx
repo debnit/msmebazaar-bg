@@ -7,309 +7,240 @@ import { useAuth } from "@/hooks/use-auth"
 import { usePathname, useSearchParams } from "next/navigation"
 import type {
   AnalyticsEvent,
-  UserSession,
   PageViewEvent,
   ClickEvent,
   PurchaseEvent,
   SearchEvent,
   FeatureUsageEvent,
-  CustomEvent,
+  UserSession,
+  EventBatch,
 } from "@/types/analytics"
 
 interface AnalyticsConfig {
   apiEndpoint?: string
   batchSize?: number
   flushInterval?: number
-  enableDebug?: boolean
   enableAutoTracking?: boolean
-  trackPageViews?: boolean
-  trackClicks?: boolean
-  trackScrollDepth?: boolean
-  trackTimeOnPage?: boolean
+  enableScrollTracking?: boolean
+  enableClickTracking?: boolean
+  debug?: boolean
 }
-
-interface AnalyticsTrackerProps {
-  config?: AnalyticsConfig
-  children?: React.ReactNode
-}
-
-const EventTypeEnum = {
-  CLICK: "click",
-  PAGE_VIEW: "page_view",
-  PURCHASE: "purchase",
-  SEARCH: "search",
-  FEATURE_USAGE: "feature_usage",
-  CUSTOM: "custom",
-} as const
 
 class AnalyticsService {
-  private events: AnalyticsEvent[] = []
-  private session: UserSession | null = null
   private config: Required<AnalyticsConfig>
+  private eventQueue: AnalyticsEvent[] = []
+  private sessionId: string
+  private sessionStartTime: number
+  private lastActivityTime: number
   private flushTimer: NodeJS.Timeout | null = null
-  private pageStartTime: number = Date.now()
-  private maxScrollDepth = 0
-  private isVisible = true
+  private isOnline = true
 
   constructor(config: AnalyticsConfig = {}) {
     this.config = {
-      apiEndpoint: config.apiEndpoint || "/api/analytics/events",
+      apiEndpoint: config.apiEndpoint || "/api/analytics",
       batchSize: config.batchSize || 10,
       flushInterval: config.flushInterval || 5000,
-      enableDebug: config.enableDebug || false,
       enableAutoTracking: config.enableAutoTracking ?? true,
-      trackPageViews: config.trackPageViews ?? true,
-      trackClicks: config.trackClicks ?? true,
-      trackScrollDepth: config.trackScrollDepth ?? true,
-      trackTimeOnPage: config.trackTimeOnPage ?? true,
+      enableScrollTracking: config.enableScrollTracking ?? true,
+      enableClickTracking: config.enableClickTracking ?? true,
+      debug: config.debug ?? false,
     }
 
-    this.initializeSession()
-    this.setupAutoTracking()
+    this.sessionId = this.generateSessionId()
+    this.sessionStartTime = Date.now()
+    this.lastActivityTime = Date.now()
+
+    this.setupEventListeners()
     this.startFlushTimer()
   }
 
-  private initializeSession() {
-    const sessionId = this.generateSessionId()
-    this.session = {
-      sessionId,
-      userId: null,
-      startTime: new Date(),
-      lastActivity: new Date(),
-      pageViews: 0,
-      events: 0,
-      device: this.getDeviceInfo(),
-      browser: this.getBrowserInfo(),
-      location: this.getLocationInfo(),
-      referrer: document.referrer || null,
-      utmSource: this.getUtmParameter("utm_source"),
-      utmMedium: this.getUtmParameter("utm_medium"),
-      utmCampaign: this.getUtmParameter("utm_campaign"),
-      isActive: true,
+  private generateSessionId(): string {
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
+  private setupEventListeners() {
+    if (typeof window === "undefined") return
+
+    // Online/offline status
+    window.addEventListener("online", () => {
+      this.isOnline = true
+      this.flush()
+    })
+    window.addEventListener("offline", () => {
+      this.isOnline = false
+    })
+
+    // Page visibility
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        this.flush()
+      }
+    })
+
+    // Before unload
+    window.addEventListener("beforeunload", () => {
+      this.flush(true)
+    })
+
+    // Auto-tracking setup
+    if (this.config.enableClickTracking) {
+      this.setupClickTracking()
+    }
+
+    if (this.config.enableScrollTracking) {
+      this.setupScrollTracking()
     }
   }
 
-  private setupAutoTracking() {
-    if (!this.config.enableAutoTracking) return
+  private setupClickTracking() {
+    document.addEventListener("click", (event) => {
+      const target = event.target as HTMLElement
+      if (!target) return
 
-    // Track page visibility
-    document.addEventListener("visibilitychange", this.handleVisibilityChange)
+      // Track button clicks
+      if (target.tagName === "BUTTON" || target.closest("button")) {
+        const button = target.tagName === "BUTTON" ? target : target.closest("button")!
+        this.trackClick({
+          elementType: "button",
+          elementText: button.textContent?.trim() || "",
+          elementId: button.id || undefined,
+          elementClass: button.className || undefined,
+        })
+      }
 
-    // Track scroll depth
-    if (this.config.trackScrollDepth) {
-      window.addEventListener("scroll", this.handleScroll, { passive: true })
-    }
-
-    // Track clicks
-    if (this.config.trackClicks) {
-      document.addEventListener("click", this.handleClick, true)
-    }
-
-    // Track page unload
-    window.addEventListener("beforeunload", this.handlePageUnload)
-  }
-
-  private handleVisibilityChange = () => {
-    this.isVisible = !document.hidden
-    if (this.session) {
-      this.session.isActive = this.isVisible
-      this.session.lastActivity = new Date()
-    }
-  }
-
-  private handleScroll = () => {
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-    const windowHeight = window.innerHeight
-    const documentHeight = document.documentElement.scrollHeight
-    const scrollDepth = Math.round(((scrollTop + windowHeight) / documentHeight) * 100)
-
-    if (scrollDepth > this.maxScrollDepth) {
-      this.maxScrollDepth = scrollDepth
-    }
-  }
-
-  private handleClick = (event: MouseEvent) => {
-    const target = event.target as HTMLElement
-    if (!target) return
-
-    const clickEvent: ClickEvent = {
-      id: this.generateEventId(),
-      type: EventTypeEnum.CLICK,
-      timestamp: new Date(),
-      sessionId: this.session?.sessionId || "",
-      userId: this.session?.userId || null,
-      properties: {
-        elementType: target.tagName.toLowerCase(),
-        elementId: target.id || null,
-        elementClass: target.className || null,
-        elementText: target.textContent?.slice(0, 100) || null,
-        href: target.getAttribute("href") || null,
-        position: {
-          x: event.clientX,
-          y: event.clientY,
-        },
-        page: window.location.pathname,
-        url: window.location.href,
-      },
-    }
-
-    this.track(clickEvent)
-  }
-
-  private handlePageUnload = () => {
-    if (this.config.trackTimeOnPage) {
-      const timeOnPage = Date.now() - this.pageStartTime
-      this.trackCustomEvent("page_unload", {
-        timeOnPage,
-        scrollDepth: this.maxScrollDepth,
-        page: window.location.pathname,
-      })
-    }
-
-    this.flush(true)
-  }
-
-  public setUser(userId: string, properties?: Record<string, any>) {
-    if (this.session) {
-      this.session.userId = userId
-      this.session.userProperties = properties
-    }
-
-    this.trackCustomEvent("user_identified", {
-      userId,
-      ...properties,
+      // Track link clicks
+      if (target.tagName === "A" || target.closest("a")) {
+        const link = target.tagName === "A" ? (target as HTMLAnchorElement) : target.closest("a")!
+        this.trackClick({
+          elementType: "link",
+          elementText: link.textContent?.trim() || "",
+          elementId: link.id || undefined,
+          elementClass: link.className || undefined,
+          href: link.href,
+        })
+      }
     })
   }
 
-  public trackPageView(path?: string, title?: string) {
-    if (!this.config.trackPageViews) return
+  private setupScrollTracking() {
+    let maxScrollDepth = 0
+    let scrollTimer: NodeJS.Timeout
 
-    const pageViewEvent: PageViewEvent = {
-      id: this.generateEventId(),
-      type: EventTypeEnum.PAGE_VIEW,
-      timestamp: new Date(),
-      sessionId: this.session?.sessionId || "",
-      userId: this.session?.userId || null,
-      properties: {
-        page: path || window.location.pathname,
-        title: title || document.title,
-        url: window.location.href,
-        referrer: document.referrer || null,
-        userAgent: navigator.userAgent,
-        screenResolution: `${screen.width}x${screen.height}`,
-        viewportSize: `${window.innerWidth}x${window.innerHeight}`,
-        language: navigator.language,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      },
+    const trackScrollDepth = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+      const scrollDepth = Math.round(((scrollTop + windowHeight) / documentHeight) * 100)
+
+      if (scrollDepth > maxScrollDepth) {
+        maxScrollDepth = scrollDepth
+
+        // Track milestone scroll depths
+        const milestones = [25, 50, 75, 90, 100]
+        const milestone = milestones.find((m) => maxScrollDepth >= m && maxScrollDepth < m + 5)
+
+        if (milestone) {
+          this.track({
+            type: "scroll_depth",
+            properties: {
+              depth: milestone,
+              page: window.location.pathname,
+            },
+            timestamp: Date.now(),
+          })
+        }
+      }
     }
 
-    if (this.session) {
-      this.session.pageViews++
-      this.session.lastActivity = new Date()
-    }
-
-    this.pageStartTime = Date.now()
-    this.maxScrollDepth = 0
-
-    this.track(pageViewEvent)
+    window.addEventListener("scroll", () => {
+      clearTimeout(scrollTimer)
+      scrollTimer = setTimeout(trackScrollDepth, 100)
+    })
   }
 
-  public trackPurchase(orderId: string, amount: number, currency = "INR", items?: any[]) {
-    const purchaseEvent: PurchaseEvent = {
-      id: this.generateEventId(),
-      type: EventTypeEnum.PURCHASE,
-      timestamp: new Date(),
-      sessionId: this.session?.sessionId || "",
-      userId: this.session?.userId || null,
-      properties: {
-        orderId,
-        amount,
-        currency,
-        items: items || [],
-        page: window.location.pathname,
-        paymentMethod: null,
-        couponCode: null,
-      },
-    }
-
-    this.track(purchaseEvent)
+  private startFlushTimer() {
+    this.flushTimer = setInterval(() => {
+      if (this.eventQueue.length > 0) {
+        this.flush()
+      }
+    }, this.config.flushInterval)
   }
 
-  public trackSearch(query: string, category?: string, results?: number) {
-    const searchEvent: SearchEvent = {
-      id: this.generateEventId(),
-      type: EventTypeEnum.SEARCH,
-      timestamp: new Date(),
-      sessionId: this.session?.sessionId || "",
-      userId: this.session?.userId || null,
-      properties: {
-        query,
-        category: category || null,
-        results: results || null,
-        page: window.location.pathname,
-      },
+  public track(event: Omit<AnalyticsEvent, "id" | "sessionId">): void {
+    const fullEvent: AnalyticsEvent = {
+      id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      sessionId: this.sessionId,
+      timestamp: Date.now(),
+      ...event,
     }
 
-    this.track(searchEvent)
-  }
+    this.eventQueue.push(fullEvent)
+    this.lastActivityTime = Date.now()
 
-  public trackFeatureUsage(feature: string, action: string, metadata?: Record<string, any>) {
-    const featureEvent: FeatureUsageEvent = {
-      id: this.generateEventId(),
-      type: EventTypeEnum.FEATURE_USAGE,
-      timestamp: new Date(),
-      sessionId: this.session?.sessionId || "",
-      userId: this.session?.userId || null,
-      properties: {
-        feature,
-        action,
-        metadata: metadata || {},
-        page: window.location.pathname,
-      },
+    if (this.config.debug) {
+      console.log("Analytics Event:", fullEvent)
     }
 
-    this.track(featureEvent)
-  }
-
-  public trackCustomEvent(eventName: string, properties?: Record<string, any>) {
-    const customEvent: CustomEvent = {
-      id: this.generateEventId(),
-      type: EventTypeEnum.CUSTOM,
-      timestamp: new Date(),
-      sessionId: this.session?.sessionId || "",
-      userId: this.session?.userId || null,
-      properties: {
-        eventName,
-        ...properties,
-        page: window.location.pathname,
-      },
-    }
-
-    this.track(customEvent)
-  }
-
-  private track(event: AnalyticsEvent) {
-    if (this.config.enableDebug) {
-      console.log("Analytics Event:", event)
-    }
-
-    this.events.push(event)
-
-    if (this.session) {
-      this.session.events++
-      this.session.lastActivity = new Date()
-    }
-
-    if (this.events.length >= this.config.batchSize) {
+    // Auto-flush if batch size reached
+    if (this.eventQueue.length >= this.config.batchSize) {
       this.flush()
     }
   }
 
-  private async flush(force = false) {
-    if (this.events.length === 0) return
+  public trackPageView(data: Omit<PageViewEvent, "type" | "timestamp">): void {
+    this.track({
+      type: "page_view",
+      properties: {
+        ...data,
+        sessionDuration: Date.now() - this.sessionStartTime,
+      },
+    })
+  }
 
-    const eventsToSend = [...this.events]
-    this.events = []
+  public trackClick(data: Omit<ClickEvent["properties"], "timestamp">): void {
+    this.track({
+      type: "click",
+      properties: {
+        ...data,
+        page: window.location.pathname,
+      },
+    })
+  }
+
+  public trackPurchase(data: Omit<PurchaseEvent["properties"], "timestamp">): void {
+    this.track({
+      type: "purchase",
+      properties: data,
+    })
+  }
+
+  public trackSearch(data: Omit<SearchEvent["properties"], "timestamp">): void {
+    this.track({
+      type: "search",
+      properties: data,
+    })
+  }
+
+  public trackFeatureUsage(data: Omit<FeatureUsageEvent["properties"], "timestamp">): void {
+    this.track({
+      type: "feature_usage",
+      properties: data,
+    })
+  }
+
+  public async flush(immediate = false): Promise<void> {
+    if (this.eventQueue.length === 0) return
+    if (!this.isOnline && !immediate) return
+
+    const events = [...this.eventQueue]
+    this.eventQueue = []
+
+    const batch: EventBatch = {
+      id: `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      events,
+      timestamp: Date.now(),
+      sessionInfo: this.getSessionInfo(),
+    }
 
     try {
       const response = await fetch(this.config.apiEndpoint, {
@@ -317,113 +248,57 @@ class AnalyticsService {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          events: eventsToSend,
-          session: this.session,
-        }),
-        keepalive: force,
+        body: JSON.stringify(batch),
+        keepalive: immediate,
       })
 
       if (!response.ok) {
         throw new Error(`Analytics API error: ${response.status}`)
       }
 
-      if (this.config.enableDebug) {
-        console.log(`Sent ${eventsToSend.length} analytics events`)
+      if (this.config.debug) {
+        console.log("Analytics batch sent:", batch)
       }
     } catch (error) {
-      console.error("Failed to send analytics events:", error)
-      // Re-add events to queue for retry
-      this.events.unshift(...eventsToSend)
+      console.error("Failed to send analytics batch:", error)
+
+      // Re-queue events if not immediate flush
+      if (!immediate) {
+        this.eventQueue.unshift(...events)
+      }
     }
   }
 
-  private startFlushTimer() {
-    this.flushTimer = setInterval(() => {
-      this.flush()
-    }, this.config.flushInterval)
-  }
-
-  private generateEventId(): string {
-    return `evt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  }
-
-  private generateSessionId(): string {
-    return `ses_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  }
-
-  private getDeviceInfo() {
-    const ua = navigator.userAgent
+  private getSessionInfo(): UserSession {
     return {
-      type: /Mobile|Android|iPhone|iPad/.test(ua) ? "mobile" : "desktop",
-      os: this.getOS(),
-      screenResolution: `${screen.width}x${screen.height}`,
-      viewportSize: `${window.innerWidth}x${window.innerHeight}`,
-      colorDepth: screen.colorDepth,
-      pixelRatio: window.devicePixelRatio,
+      id: this.sessionId,
+      userId: undefined, // Will be set by the component
+      startTime: this.sessionStartTime,
+      lastActivityTime: this.lastActivityTime,
+      duration: Date.now() - this.sessionStartTime,
+      pageViews: this.eventQueue.filter((e) => e.type === "page_view").length,
+      events: this.eventQueue.length,
+      device: {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        platform: navigator.platform,
+        screenResolution: `${screen.width}x${screen.height}`,
+        viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+      location: {
+        url: window.location.href,
+        pathname: window.location.pathname,
+        search: window.location.search,
+        referrer: document.referrer,
+      },
     }
   }
 
-  private getBrowserInfo() {
-    const ua = navigator.userAgent
-    let browser = "Unknown"
-
-    if (ua.includes("Chrome")) browser = "Chrome"
-    else if (ua.includes("Firefox")) browser = "Firefox"
-    else if (ua.includes("Safari")) browser = "Safari"
-    else if (ua.includes("Edge")) browser = "Edge"
-
-    return {
-      name: browser,
-      version: this.getBrowserVersion(),
-      language: navigator.language,
-      cookieEnabled: navigator.cookieEnabled,
-      doNotTrack: navigator.doNotTrack === "1",
-    }
-  }
-
-  private getLocationInfo() {
-    return {
-      href: window.location.href,
-      pathname: window.location.pathname,
-      search: window.location.search,
-      hash: window.location.hash,
-      host: window.location.host,
-      protocol: window.location.protocol,
-    }
-  }
-
-  private getOS(): string {
-    const ua = navigator.userAgent
-    if (ua.includes("Windows")) return "Windows"
-    if (ua.includes("Mac")) return "macOS"
-    if (ua.includes("Linux")) return "Linux"
-    if (ua.includes("Android")) return "Android"
-    if (ua.includes("iPhone") || ua.includes("iPad")) return "iOS"
-    return "Unknown"
-  }
-
-  private getBrowserVersion(): string {
-    const ua = navigator.userAgent
-    const match = ua.match(/(Chrome|Firefox|Safari|Edge)\/(\d+)/i)
-    return match ? match[2] : "Unknown"
-  }
-
-  private getUtmParameter(param: string): string | null {
-    const urlParams = new URLSearchParams(window.location.search)
-    return urlParams.get(param)
-  }
-
-  public destroy() {
+  public destroy(): void {
     if (this.flushTimer) {
       clearInterval(this.flushTimer)
     }
-
-    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
-    window.removeEventListener("scroll", this.handleScroll)
-    document.removeEventListener("click", this.handleClick)
-    window.removeEventListener("beforeunload", this.handlePageUnload)
-
     this.flush(true)
   }
 }
@@ -431,87 +306,110 @@ class AnalyticsService {
 // Global analytics instance
 let analyticsInstance: AnalyticsService | null = null
 
+export function getAnalytics(config?: AnalyticsConfig): AnalyticsService {
+  if (!analyticsInstance) {
+    analyticsInstance = new AnalyticsService(config)
+  }
+  return analyticsInstance
+}
+
+interface AnalyticsTrackerProps {
+  config?: AnalyticsConfig
+  children: React.ReactNode
+}
+
 export function AnalyticsTracker({ config, children }: AnalyticsTrackerProps) {
   const { user } = useAuth()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const analyticsRef = useRef<AnalyticsService | null>(null)
+  const previousPathnameRef = useRef<string>("")
 
-  // Initialize analytics service
+  // Initialize analytics
   useEffect(() => {
-    if (!analyticsRef.current) {
-      analyticsRef.current = new AnalyticsService(config)
-      analyticsInstance = analyticsRef.current
-    }
+    analyticsRef.current = getAnalytics(config)
 
     return () => {
-      if (analyticsRef.current) {
-        analyticsRef.current.destroy()
-        analyticsRef.current = null
-        analyticsInstance = null
-      }
+      analyticsRef.current?.destroy()
     }
   }, [config])
 
-  // Track user identification
+  // Track page views
   useEffect(() => {
-    if (user && analyticsRef.current) {
-      analyticsRef.current.setUser(user.id, {
+    if (!analyticsRef.current) return
+
+    const currentPath = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "")
+
+    // Don't track initial page load or same page
+    if (previousPathnameRef.current && previousPathnameRef.current !== currentPath) {
+      analyticsRef.current.trackPageView({
+        page: pathname,
+        title: document.title,
+        url: window.location.href,
+        referrer: document.referrer,
+        search: searchParams?.toString() || "",
+        userId: user?.id,
+      })
+    }
+
+    previousPathnameRef.current = currentPath
+  }, [pathname, searchParams, user?.id])
+
+  // Track user changes
+  useEffect(() => {
+    if (!analyticsRef.current || !user) return
+
+    analyticsRef.current.track({
+      type: "user_identify",
+      properties: {
+        userId: user.id,
         email: user.email,
-        name: user.name,
         role: user.role,
         businessId: user.businessId,
         isProUser: user.isProUser,
-      })
-    }
+      },
+    })
   }, [user])
-
-  // Track page views
-  useEffect(() => {
-    if (analyticsRef.current) {
-      const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : "")
-      analyticsRef.current.trackPageView(url)
-    }
-  }, [pathname, searchParams])
 
   return <>{children}</>
 }
 
 // Hook for using analytics in components
 export function useAnalytics() {
-  const trackEvent = useCallback((eventName: string, properties?: Record<string, any>) => {
-    if (analyticsInstance) {
-      analyticsInstance.trackCustomEvent(eventName, properties)
-    }
+  const analytics = useRef<AnalyticsService | null>(null)
+
+  useEffect(() => {
+    analytics.current = getAnalytics()
   }, [])
 
-  const trackPageView = useCallback((path?: string, title?: string) => {
-    if (analyticsInstance) {
-      analyticsInstance.trackPageView(path, title)
-    }
+  const trackEvent = useCallback((event: Omit<AnalyticsEvent, "id" | "sessionId">) => {
+    analytics.current?.track(event)
   }, [])
 
-  const trackPurchase = useCallback((orderId: string, amount: number, currency?: string, items?: any[]) => {
-    if (analyticsInstance) {
-      analyticsInstance.trackPurchase(orderId, amount, currency, items)
-    }
+  const trackPageView = useCallback((data: Omit<PageViewEvent, "type" | "timestamp">) => {
+    analytics.current?.trackPageView(data)
   }, [])
 
-  const trackSearch = useCallback((query: string, category?: string, results?: number) => {
-    if (analyticsInstance) {
-      analyticsInstance.trackSearch(query, category, results)
-    }
+  const trackClick = useCallback((data: Omit<ClickEvent["properties"], "timestamp">) => {
+    analytics.current?.trackClick(data)
   }, [])
 
-  const trackFeatureUsage = useCallback((feature: string, action: string, metadata?: Record<string, any>) => {
-    if (analyticsInstance) {
-      analyticsInstance.trackFeatureUsage(feature, action, metadata)
-    }
+  const trackPurchase = useCallback((data: Omit<PurchaseEvent["properties"], "timestamp">) => {
+    analytics.current?.trackPurchase(data)
+  }, [])
+
+  const trackSearch = useCallback((data: Omit<SearchEvent["properties"], "timestamp">) => {
+    analytics.current?.trackSearch(data)
+  }, [])
+
+  const trackFeatureUsage = useCallback((data: Omit<FeatureUsageEvent["properties"], "timestamp">) => {
+    analytics.current?.trackFeatureUsage(data)
   }, [])
 
   return {
     trackEvent,
     trackPageView,
+    trackClick,
     trackPurchase,
     trackSearch,
     trackFeatureUsage,
