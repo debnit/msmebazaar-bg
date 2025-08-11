@@ -17,22 +17,23 @@ export function formatCurrency(
 ): string {
   const { showSymbol = true, showDecimals = true, compact = false, locale = "en-IN" } = options
 
-  if (compact && amount >= 10000000) {
-    // Format in Crores
-    const crores = amount / 10000000
-    return `${showSymbol ? "₹" : ""}${crores.toFixed(crores >= 100 ? 0 : 1)} Cr`
-  }
+  if (isNaN(amount)) return "₹0"
 
-  if (compact && amount >= 100000) {
-    // Format in Lakhs
-    const lakhs = amount / 100000
-    return `${showSymbol ? "₹" : ""}${lakhs.toFixed(lakhs >= 100 ? 0 : 1)} L`
-  }
-
-  if (compact && amount >= 1000) {
-    // Format in Thousands
-    const thousands = amount / 1000
-    return `${showSymbol ? "₹" : ""}${thousands.toFixed(thousands >= 100 ? 0 : 1)}K`
+  // Handle compact formatting for large numbers
+  if (compact) {
+    if (amount >= 10000000) {
+      // 1 crore and above
+      const crores = amount / 10000000
+      return `${showSymbol ? "₹" : ""}${crores.toFixed(crores >= 100 ? 0 : 1)}Cr`
+    } else if (amount >= 100000) {
+      // 1 lakh and above
+      const lakhs = amount / 100000
+      return `${showSymbol ? "₹" : ""}${lakhs.toFixed(lakhs >= 100 ? 0 : 1)}L`
+    } else if (amount >= 1000) {
+      // 1 thousand and above
+      const thousands = amount / 1000
+      return `${showSymbol ? "₹" : ""}${thousands.toFixed(thousands >= 100 ? 0 : 1)}K`
+    }
   }
 
   const formatter = new Intl.NumberFormat(locale, {
@@ -44,30 +45,34 @@ export function formatCurrency(
 
   let formatted = formatter.format(amount)
 
+  // Remove currency symbol if not needed
   if (!showSymbol) {
-    formatted = formatted.replace("₹", "").trim()
+    formatted = formatted.replace(/₹|INR/g, "").trim()
   }
 
   return formatted
 }
 
 /**
- * Format numbers in Indian numbering system (Lakhs, Crores)
+ * Format numbers in Indian numbering system (lakhs, crores)
  */
-export function formatIndianNumber(num: number, compact = false): string {
-  if (compact) {
-    if (num >= 10000000) {
-      return `${(num / 10000000).toFixed(1)}Cr`
-    }
-    if (num >= 100000) {
-      return `${(num / 100000).toFixed(1)}L`
-    }
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`
-    }
+export function formatIndianNumber(num: number): string {
+  if (isNaN(num)) return "0"
+
+  const numStr = Math.abs(num).toString()
+  const isNegative = num < 0
+
+  if (numStr.length <= 3) {
+    return (isNegative ? "-" : "") + numStr
   }
 
-  return new Intl.NumberFormat("en-IN").format(num)
+  // Indian numbering system: last 3 digits, then groups of 2
+  const lastThree = numStr.substring(numStr.length - 3)
+  const otherNumbers = numStr.substring(0, numStr.length - 3)
+
+  const formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + lastThree
+
+  return (isNegative ? "-" : "") + formatted
 }
 
 /**
@@ -140,11 +145,16 @@ export function formatRelativeDate(date: Date | string | number): string {
     { label: "minute", seconds: 60 },
   ]
 
+  if (Math.abs(diffInSeconds) < 60) {
+    return "just now"
+  }
+
   for (const interval of intervals) {
     const count = Math.floor(Math.abs(diffInSeconds) / interval.seconds)
     if (count >= 1) {
-      const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" })
-      return rtf.format(diffInSeconds > 0 ? -count : count, interval.label as Intl.RelativeTimeFormatUnit)
+      const suffix = count === 1 ? "" : "s"
+      const timePhrase = `${count} ${interval.label}${suffix}`
+      return diffInSeconds < 0 ? `in ${timePhrase}` : `${timePhrase} ago`
     }
   }
 
@@ -154,36 +164,33 @@ export function formatRelativeDate(date: Date | string | number): string {
 /**
  * Format business registration number (CIN, GSTIN, etc.)
  */
-export function formatBusinessNumber(number: string, type: "CIN" | "GSTIN" | "PAN" | "UDYAM"): string {
+export function formatBusinessNumber(number: string, type: "CIN" | "GSTIN" | "PAN" | "UDYAM" = "GSTIN"): string {
   if (!number) return ""
 
-  const cleaned = number.replace(/\s/g, "").toUpperCase()
+  const cleaned = number.replace(/\s+/g, "").toUpperCase()
 
   switch (type) {
-    case "CIN":
-      // Format: L12345MH2023PTC123456
-      if (cleaned.length === 21) {
-        return `${cleaned.slice(0, 1)}-${cleaned.slice(1, 6)}-${cleaned.slice(6, 8)}-${cleaned.slice(8, 12)}-${cleaned.slice(12, 15)}-${cleaned.slice(15)}`
+    case "GSTIN":
+      // Format: 22AAAAA0000A1Z5
+      if (cleaned.length === 15) {
+        return cleaned.replace(/(.{2})(.{10})(.{3})/, "$1 $2 $3")
       }
       break
-    case "GSTIN":
-      // Format: 12ABCDE1234F1Z5
-      if (cleaned.length === 15) {
-        return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 7)}-${cleaned.slice(7, 11)}-${cleaned.slice(11, 12)}-${cleaned.slice(12, 13)}-${cleaned.slice(13)}`
+    case "CIN":
+      // Format: L17110DL1995PLC069348
+      if (cleaned.length === 21) {
+        return cleaned.replace(/(.{1})(.{5})(.{2})(.{4})(.{3})(.{6})/, "$1$2$3$4$5$6")
       }
       break
     case "PAN":
-      // Format: ABCDE1234F
+      // Format: AAAPL1234C
       if (cleaned.length === 10) {
-        return `${cleaned.slice(0, 5)}-${cleaned.slice(5)}`
+        return cleaned.replace(/(.{5})(.{4})(.{1})/, "$1$2$3")
       }
       break
     case "UDYAM":
       // Format: UDYAM-XX-00-0000000
-      if (cleaned.startsWith("UDYAM") && cleaned.length >= 12) {
-        return cleaned.replace(/(.{5})(.{2})(.{2})(.*)/, "$1-$2-$3-$4")
-      }
-      break
+      return cleaned.replace(/UDYAM/, "UDYAM-").replace(/(.{8})(.{2})(.{2})(.{7})/, "$1$2-$3-$4")
   }
 
   return cleaned
@@ -195,19 +202,38 @@ export function formatBusinessNumber(number: string, type: "CIN" | "GSTIN" | "PA
 export function formatPhoneNumber(phone: string): string {
   if (!phone) return ""
 
+  // Remove all non-digits
   const cleaned = phone.replace(/\D/g, "")
 
-  // Indian mobile number format: +91 98765 43210
+  // Handle Indian mobile numbers (10 digits) and landline with STD (11 digits)
   if (cleaned.length === 10) {
-    return `+91 ${cleaned.slice(0, 5)} ${cleaned.slice(5)}`
-  }
-
-  // If already has country code
-  if (cleaned.length === 12 && cleaned.startsWith("91")) {
-    return `+91 ${cleaned.slice(2, 7)} ${cleaned.slice(7)}`
+    return cleaned.replace(/(\d{5})(\d{5})/, "$1 $2")
+  } else if (cleaned.length === 11) {
+    return cleaned.replace(/(\d{4})(\d{3})(\d{4})/, "$1 $2 $3")
+  } else if (cleaned.length === 12 && cleaned.startsWith("91")) {
+    // With country code
+    return cleaned.replace(/(\d{2})(\d{5})(\d{5})/, "+$1 $2 $3")
   }
 
   return phone
+}
+
+/**
+ * Format percentage with proper decimal places
+ */
+export function formatPercentage(
+  value: number,
+  options: {
+    decimals?: number
+    showSign?: boolean
+  } = {},
+): string {
+  const { decimals = 1, showSign = true } = options
+
+  if (isNaN(value)) return "0%"
+
+  const formatted = value.toFixed(decimals)
+  return `${showSign && value > 0 ? "+" : ""}${formatted}%`
 }
 
 /**
@@ -220,31 +246,34 @@ export function formatFileSize(bytes: number): string {
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"]
   const i = Math.floor(Math.log(bytes) / Math.log(k))
 
-  return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
+  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
 }
 
 /**
- * Format percentage with proper decimal places
- */
-export function formatPercentage(value: number, decimals = 1): string {
-  return `${value.toFixed(decimals)}%`
-}
-
-/**
- * Format business name for display (title case, trim)
+ * Format business name with proper capitalization
  */
 export function formatBusinessName(name: string): string {
   if (!name) return ""
 
+  // Common business suffixes that should remain uppercase
+  const suffixes = ["LLP", "PVT", "LTD", "LLC", "INC", "CORP", "CO"]
+
   return name
-    .trim()
+    .toLowerCase()
     .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => {
+      // Keep suffixes uppercase
+      if (suffixes.includes(word.toUpperCase())) {
+        return word.toUpperCase()
+      }
+      // Capitalize first letter of other words
+      return word.charAt(0).toUpperCase() + word.slice(1)
+    })
     .join(" ")
 }
 
 /**
- * Format address for display
+ * Format address in Indian format
  */
 export function formatAddress(address: {
   line1?: string
@@ -254,9 +283,14 @@ export function formatAddress(address: {
   pincode?: string
   country?: string
 }): string {
-  const parts = [address.line1, address.line2, address.city, address.state, address.pincode, address.country].filter(
-    Boolean,
-  )
+  const parts = []
+
+  if (address.line1) parts.push(address.line1)
+  if (address.line2) parts.push(address.line2)
+  if (address.city) parts.push(address.city)
+  if (address.state) parts.push(address.state)
+  if (address.pincode) parts.push(address.pincode)
+  if (address.country && address.country !== "India") parts.push(address.country)
 
   return parts.join(", ")
 }
@@ -266,118 +300,101 @@ export function formatAddress(address: {
  */
 export function truncateText(text: string, maxLength: number): string {
   if (!text || text.length <= maxLength) return text
-  return `${text.slice(0, maxLength)}...`
+  return text.substring(0, maxLength).trim() + "..."
 }
 
 /**
- * Format loan status for display
+ * Format loan amount with tenure
  */
-export function formatLoanStatus(status: string): { label: string; color: string } {
-  const statusMap: Record<string, { label: string; color: string }> = {
-    draft: { label: "Draft", color: "gray" },
-    submitted: { label: "Submitted", color: "blue" },
-    under_review: { label: "Under Review", color: "yellow" },
-    approved: { label: "Approved", color: "green" },
-    rejected: { label: "Rejected", color: "red" },
-    disbursed: { label: "Disbursed", color: "green" },
-    closed: { label: "Closed", color: "gray" },
+export function formatLoanDetails(amount: number, tenure: number, interestRate?: number): string {
+  const formattedAmount = formatCurrency(amount, { compact: true })
+  const tenureText = `${tenure} ${tenure === 1 ? "month" : "months"}`
+
+  if (interestRate) {
+    return `${formattedAmount} for ${tenureText} at ${formatPercentage(interestRate)} p.a.`
   }
 
-  return statusMap[status] || { label: status, color: "gray" }
-}
-
-/**
- * Format business stage for display
- */
-export function formatBusinessStage(stage: string): string {
-  const stageMap: Record<string, string> = {
-    idea: "Idea Stage",
-    startup: "Startup",
-    growth: "Growth Stage",
-    mature: "Mature Business",
-    expansion: "Expansion Phase",
-    exit: "Exit Ready",
-  }
-
-  return stageMap[stage] || stage
-}
-
-/**
- * Format industry type for display
- */
-export function formatIndustryType(industry: string): string {
-  return industry
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
-}
-
-/**
- * Format time duration (e.g., "2h 30m", "1d 5h")
- */
-export function formatDuration(seconds: number): string {
-  const units = [
-    { label: "d", value: 86400 },
-    { label: "h", value: 3600 },
-    { label: "m", value: 60 },
-    { label: "s", value: 1 },
-  ]
-
-  const parts: string[] = []
-  let remaining = seconds
-
-  for (const unit of units) {
-    const count = Math.floor(remaining / unit.value)
-    if (count > 0) {
-      parts.push(`${count}${unit.label}`)
-      remaining -= count * unit.value
-    }
-    if (parts.length >= 2) break // Show only top 2 units
-  }
-
-  return parts.join(" ") || "0s"
-}
-
-/**
- * Format credit score range
- */
-export function formatCreditScore(score: number): { label: string; color: string } {
-  if (score >= 750) return { label: "Excellent", color: "green" }
-  if (score >= 700) return { label: "Good", color: "blue" }
-  if (score >= 650) return { label: "Fair", color: "yellow" }
-  if (score >= 600) return { label: "Poor", color: "orange" }
-  return { label: "Very Poor", color: "red" }
+  return `${formattedAmount} for ${tenureText}`
 }
 
 /**
  * Format business turnover range
  */
-export function formatTurnoverRange(turnover: number): string {
-  if (turnover < 500000) return "Below ₹5 Lakh"
-  if (turnover < 2000000) return "₹5 Lakh - ₹20 Lakh"
-  if (turnover < 10000000) return "₹20 Lakh - ₹1 Crore"
-  if (turnover < 50000000) return "₹1 Crore - ₹5 Crore"
-  if (turnover < 250000000) return "₹5 Crore - ₹25 Crore"
-  return "Above ₹25 Crore"
+export function formatTurnoverRange(min: number, max: number): string {
+  const minFormatted = formatCurrency(min, { compact: true })
+  const maxFormatted = formatCurrency(max, { compact: true })
+  return `${minFormatted} - ${maxFormatted}`
 }
 
 /**
- * Mask sensitive information (PAN, Aadhaar, etc.)
+ * Format employee count range
  */
-export function maskSensitiveInfo(value: string, type: "pan" | "aadhaar" | "account" = "pan"): string {
-  if (!value) return ""
+export function formatEmployeeRange(min: number, max: number): string {
+  if (min === max) return `${min} employees`
+  return `${min}-${max} employees`
+}
 
-  switch (type) {
-    case "pan":
-      // Show first 3 and last 1 characters: ABC***234F
-      return value.length >= 4 ? `${value.slice(0, 3)}***${value.slice(-1)}` : value
-    case "aadhaar":
-      // Show last 4 digits: ****-****-1234
-      return value.length >= 4 ? `****-****-${value.slice(-4)}` : value
-    case "account":
-      // Show last 4 digits: ****1234
-      return value.length >= 4 ? `****${value.slice(-4)}` : value
-    default:
-      return value
+/**
+ * Format business stage/category
+ */
+export function formatBusinessStage(stage: string): string {
+  const stageMap: Record<string, string> = {
+    startup: "Startup",
+    growth: "Growth Stage",
+    mature: "Mature Business",
+    expansion: "Expansion Phase",
+    turnaround: "Turnaround",
   }
+
+  return stageMap[stage.toLowerCase()] || stage
+}
+
+/**
+ * Format industry/sector name
+ */
+export function formatIndustry(industry: string): string {
+  return industry
+    .split(/[-_\s]+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ")
+}
+
+/**
+ * Format duration in human readable format
+ */
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) {
+    return `${minutes} min${minutes !== 1 ? "s" : ""}`
+  }
+
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+
+  if (remainingMinutes === 0) {
+    return `${hours} hour${hours !== 1 ? "s" : ""}`
+  }
+
+  return `${hours}h ${remainingMinutes}m`
+}
+
+/**
+ * Format status with color coding
+ */
+export function formatStatus(status: string): {
+  label: string
+  variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning"
+} {
+  const statusMap: Record<string, { label: string; variant: any }> = {
+    pending: { label: "Pending", variant: "warning" },
+    approved: { label: "Approved", variant: "success" },
+    rejected: { label: "Rejected", variant: "destructive" },
+    in_progress: { label: "In Progress", variant: "default" },
+    completed: { label: "Completed", variant: "success" },
+    cancelled: { label: "Cancelled", variant: "secondary" },
+    draft: { label: "Draft", variant: "outline" },
+    active: { label: "Active", variant: "success" },
+    inactive: { label: "Inactive", variant: "secondary" },
+  }
+
+  return statusMap[status.toLowerCase()] || { label: status, variant: "default" }
 }
