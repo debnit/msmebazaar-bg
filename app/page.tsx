@@ -6,7 +6,6 @@ import { Building2, TrendingUp, DollarSign, Users, Star, CheckCircle, Phone, Mai
 import Link from "next/link"
 import Image from "next/image"
 import { EnquiryForm } from "@/components/enquiry-form"
->>>>>>> Stashed changes
 
 import FeatureGate from "../components/feature-gate"
 
