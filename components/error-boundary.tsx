@@ -27,17 +27,13 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    // Update state so the next render will show the fallback UI
     return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log error to console or error reporting service
     console.error("Error caught by boundary:", error, errorInfo)
     this.setState({ error, errorInfo })
-
-    // TODO: Send error to logging service
-    // logErrorToService(error, errorInfo)
+    // TODO: Send to logging service
   }
 
   handleReset = () => {
@@ -46,7 +42,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback component
+      // Custom fallback if provided
       if (this.props.fallback) {
         const FallbackComponent = this.props.fallback
         return <FallbackComponent error={this.state.error!} resetError={this.handleReset} />
@@ -54,15 +50,17 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
       // Default fallback UI
       return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
+        <div className="flex min-h-screen items-center justify-center p-4 bg-gray-50">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
-              <CardTitle className="text-xl font-semibold text-gray-900">Something went wrong</CardTitle>
+              <CardTitle className="text-xl font-semibold text-gray-900">
+                Something went wrong
+              </CardTitle>
               <CardDescription className="text-gray-600">
-                We're sorry, but something unexpected happened. Please try refreshing the page.
+                We’re sorry, but something unexpected happened. Please try refreshing the page.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -92,18 +90,17 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 }
 
 /**
- * Hook-based error boundary for functional components
- * Use this with React Query or other error handling patterns
+ * Hook-based error handler for functional components
  */
 export function useErrorHandler() {
   return (error: Error, errorInfo?: React.ErrorInfo) => {
     console.error("Error handled:", error, errorInfo)
-    // TODO: Send to error reporting service
+    // TODO: Send to logging service
   }
 }
 
 /**
- * Simple error fallback component for specific use cases
+ * Simple fallback component for specific use cases
  */
 export function ErrorFallback({
   error,
@@ -118,7 +115,7 @@ export function ErrorFallback({
       <h3 className="text-lg font-semibold text-gray-900 mb-1">Oops! Something went wrong</h3>
       <p className="text-sm text-gray-600 mb-4">{error.message || "An unexpected error occurred"}</p>
       <Button onClick={resetError} size="sm">
-        Try again
+        Try Again
       </Button>
     </div>
   )
