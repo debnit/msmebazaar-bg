@@ -1,8 +1,10 @@
 "use client"
 
 import type React from "react"
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+import { useState } from "react"
 
 interface QueryProviderProps {
   children: React.ReactNode
@@ -10,10 +12,10 @@ interface QueryProviderProps {
 
 /**
  * React Query provider component that wraps the application
- * Provides global data fetching, caching, and synchronization
+ * Provides data fetching, caching, and synchronization capabilities
  */
 export function QueryProvider({ children }: QueryProviderProps) {
-  const [queryClient] = React.useState(
+  const [queryClient] = useState(
     () =>
       new QueryClient({
         defaultOptions: {
