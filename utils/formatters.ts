@@ -41,13 +41,55 @@ export const formatCurrency = (
 }
 
 /**
+ * Format INR currency without options (wrapper)
+ */
+export const formatINR = (amount: number): string => {
+  return formatCurrency(amount, { showSymbol: true, showDecimals: true, compact: false })
+}
+
+/**
+ * Format compact currency as string with units (Cr, L, K)
+ */
+export const formatCompactCurrency = (amount: number): string => {
+  if (amount >= 10000000) {
+    // 1 crore
+    return `₹${(amount / 10000000).toFixed(1)}Cr`
+  } else if (amount >= 100000) {
+    // 1 lakh
+    return `₹${(amount / 100000).toFixed(1)}L`
+  } else if (amount >= 1000) {
+    // 1 thousand
+    return `₹${(amount / 1000).toFixed(1)}K`
+  }
+  return formatINR(amount)
+}
+
+/**
+ * Format percentage with proper rounding and optional sign
+ */
+export const formatPercentage = (
+  value: number,
+  decimals = 1,
+  showSign = false,
+): string => {
+  const formatted = value.toFixed(decimals)
+  const sign = showSign && value > 0 ? "+" : ""
+  return `${sign}${formatted}%`
+}
+
+/**
  * Format date for Indian context
  */
 export const formatDate = (
-  date: string | Date,
+  date: Date | string | number,
   format: "short" | "medium" | "long" | "relative" = "medium",
+  locale = "en-IN",
 ): string => {
-  const dateObj = typeof date === "string" ? new Date(date) : date
+  const dateObj = new Date(date)
+
+  if (isNaN(dateObj.getTime())) {
+    return "Invalid Date"
+  }
 
   if (format === "relative") {
     const now = new Date()
@@ -85,11 +127,133 @@ export const formatDate = (
       break
   }
 
-  return new Intl.DateTimeFormat("en-IN", options).format(dateObj)
+  return dateObj.toLocaleDateString(locale, options)
 }
 
 /**
- * Format Indian phone numbers
+ * Format relative date helper (alternative implementation)
+ */
+export const formatRelativeDate = (date: Date): string => {
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  if (diffInSeconds < 60) {
+    return "Just now"
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60)
+    return `${minutes} minute${minutes > 1 ? "s" : ""} ago`
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600)
+    return `${hours} hour${hours > 1 ? "s" : ""} ago`
+  } else if (diffInSeconds < 2592000) {
+    const days = Math.floor(diffInSeconds / 86400)
+    return `${days} day${days > 1 ? "s" : ""} ago`
+  } else if (diffInSeconds < 31536000) {
+    const months = Math.floor(diffInSeconds / 2592000)
+    return `${months} month${months > 1 ? "s" : ""} ago`
+  } else {
+    const years = Math.floor(diffInSeconds / 31536000)
+    return `${years} year${years > 1 ? "s" : ""} ago`
+  }
+}
+
+/**
+ * Format date and time with time
+ */
+export const formatDateTime = (date: Date | string | number, locale = "en-IN"): string => {
+  const dateObj = new Date(date)
+
+  if (isNaN(dateObj.getTime())) {
+    return "Invalid Date"
+  }
+
+  return dateObj.toLocaleString(locale, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })
+}
+
+/**
+ * Format time only
+ */
+export const formatTime = (date: Date | string | number, locale = "en-IN"): string => {
+  const dateObj = new Date(date)
+
+  if (isNaN(dateObj.getTime())) {
+    return "Invalid Time"
+  }
+
+  return dateObj.toLocaleTimeString(locale, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })
+}
+
+/**
+ * Truncate string with suffix
+ */
+export const truncateString = (str: string, maxLength: number, suffix = "..."): string => {
+  if (str.length <= maxLength) {
+    return str
+  }
+  return str.substring(0, maxLength - suffix.length) + suffix
+}
+
+/**
+ * Truncate words with suffix
+ */
+export const truncateWords = (str: string, maxWords: number, suffix = "..."): string => {
+  const words = str.split(" ")
+  if (words.length <= maxWords) {
+    return str
+  }
+  return words.slice(0, maxWords).join(" ") + suffix
+}
+
+/**
+ * Format number with decimals
+ */
+export const formatNumber = (num: number, decimals = 0, locale = "en-IN"): string => {
+  return num.toLocaleString(locale, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
+}
+
+/**
+ * Format compact number with units (Cr, L, K)
+ */
+export const formatCompactNumber = (num: number): string => {
+  if (num >= 10000000) {
+    return `${(num / 10000000).toFixed(1)}Cr`
+  } else if (num >= 100000) {
+    return `${(num / 100000).toFixed(1)}L`
+  } else if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}K`
+  }
+  return num.toString()
+}
+
+/**
+ * Format file size in human readable form
+ */
+export const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return "0 Bytes"
+
+  const k = 1024
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"]
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+
+  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+}
+
+/**
+ * Format phone number (Indian format)
  */
 export const formatPhoneNumber = (phone: string): string => {
   // Remove all non-digits
@@ -110,32 +274,50 @@ export const formatPhoneNumber = (phone: string): string => {
 }
 
 /**
- * Format business registration numbers (GST, PAN, etc.)
+ * Format GST number (Indian)
+ */
+export const formatGST = (gst: string): string => {
+  const cleaned = gst.replace(/\s/g, "").toUpperCase()
+  if (cleaned.length === 15) {
+    return `${cleaned.slice(0, 2)} ${cleaned.slice(2, 7)} ${cleaned.slice(7, 11)} ${cleaned.slice(11, 12)} ${cleaned.slice(12, 13)} ${cleaned.slice(13)}`
+  }
+  return gst
+}
+
+/**
+ * Format PAN number (Indian)
+ */
+export const formatPAN = (pan: string): string => {
+  const cleaned = pan.replace(/\s/g, "").toUpperCase()
+  if (cleaned.length === 10) {
+    return `${cleaned.slice(0, 5)} ${cleaned.slice(5)}`
+  }
+  return pan
+}
+
+/**
+ * Format business ID based on type (GST, PAN, CIN, UDYAM)
  */
 export const formatBusinessId = (id: string, type: "GST" | "PAN" | "CIN" | "UDYAM"): string => {
   const cleaned = id.toUpperCase().replace(/\s/g, "")
 
   switch (type) {
     case "GST":
-      // Format: 22AAAAA0000A1Z5
       if (cleaned.length === 15) {
         return `${cleaned.slice(0, 2)} ${cleaned.slice(2, 7)} ${cleaned.slice(7, 11)} ${cleaned.slice(11, 12)} ${cleaned.slice(12, 13)} ${cleaned.slice(13)}`
       }
       break
     case "PAN":
-      // Format: AAAAA0000A
       if (cleaned.length === 10) {
         return `${cleaned.slice(0, 5)} ${cleaned.slice(5)}`
       }
       break
     case "CIN":
-      // Format: L17110DL1995PLC069348
       if (cleaned.length === 21) {
         return `${cleaned.slice(0, 1)} ${cleaned.slice(1, 6)} ${cleaned.slice(6, 8)} ${cleaned.slice(8, 12)} ${cleaned.slice(12, 15)} ${cleaned.slice(15)}`
       }
       break
     case "UDYAM":
-      // Format: UDYAM-XX-00-0000000
       if (cleaned.startsWith("UDYAM")) {
         const number = cleaned.slice(5)
         if (number.length === 11) {
@@ -149,53 +331,101 @@ export const formatBusinessId = (id: string, type: "GST" | "PAN" | "CIN" | "UDYA
 }
 
 /**
- * Format file size in human readable format
+ * Format business name by capitalizing each word
  */
-export const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return "0 Bytes"
-
-  const k = 1024
-  const sizes = ["Bytes", "KB", "MB", "GB"]
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-  return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`
-}
-
-/**
- * Format percentage with proper rounding
- */
-export const formatPercentage = (
-  value: number,
-  options: {
-    decimals?: number
-    showSign?: boolean
-  } = {},
-): string => {
-  const { decimals = 1, showSign = true } = options
-  const formatted = (value * 100).toFixed(decimals)
-  return `${formatted}${showSign ? "%" : ""}`
-}
-
-/**
- * Truncate text with ellipsis
- */
-export const truncateText = (text: string, maxLength: number): string => {
-  if (text.length <= maxLength) return text
-  return `${text.slice(0, maxLength)}...`
-}
-
-/**
- * Format business category for display
- */
-export const formatBusinessCategory = (category: string): string => {
-  return category
-    .split("_")
+export const formatBusinessName = (name: string): string => {
+  return name
+    .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ")
 }
 
 /**
- * Format loan status for display
+ * Format address from parts, join with commas
+ */
+export const formatAddress = (address: {
+  line1?: string
+  line2?: string
+  city?: string
+  state?: string
+  pincode?: string
+  country?: string
+}): string => {
+  const parts = [address.line1, address.line2, address.city, address.state, address.pincode, address.country].filter(
+    Boolean,
+  )
+
+  return parts.join(", ")
+}
+
+/**
+ * Format time duration from seconds (h, m, s)
+ */
+export const formatDuration = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const remainingSeconds = seconds % 60
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${remainingSeconds}s`
+  } else if (minutes > 0) {
+    return `${minutes}m ${remainingSeconds}s`
+  } else {
+    return `${remainingSeconds}s`
+  }
+}
+
+/**
+ * Format rating as string with max rating
+ */
+export const formatRating = (rating: number, maxRating = 5): string => {
+  return `${rating.toFixed(1)}/${maxRating}`
+}
+
+/**
+ * Format order ID by prefixing #
+ */
+export const formatOrderId = (id: string): string => {
+  return `#${id.toUpperCase()}`
+}
+
+/**
+ * Format invoice number by prefixing INV-
+ */
+export const formatInvoiceNumber = (number: string): string => {
+  return `INV-${number}`
+}
+
+/**
+ * Validation helpers
+ */
+export const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
+
+export const isValidPhone = (phone: string): boolean => {
+  const phoneRegex = /^(\+91|91)?[6-9]\d{9}$/
+  return phoneRegex.test(phone.replace(/\s/g, ""))
+}
+
+export const isValidGST = (gst: string): boolean => {
+  const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
+  return gstRegex.test(gst.replace(/\s/g, ""))
+}
+
+export const isValidPAN = (pan: string): boolean => {
+  const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/
+  return panRegex.test(pan.replace(/\s/g, ""))
+}
+
+export const isValidPincode = (pincode: string): boolean => {
+  const pincodeRegex = /^[1-9][0-9]{5}$/
+  return pincodeRegex.test(pincode)
+}
+
+/**
+ * Format loan status for display with label and color
  */
 export const formatLoanStatus = (
   status: string,
@@ -216,9 +446,9 @@ export const formatLoanStatus = (
 }
 
 /**
- * Format time duration (e.g., for loan tenure)
+ * Format time duration in months or years + months
  */
-export const formatDuration = (months: number): string => {
+export const formatDurationMonths = (months: number): string => {
   if (months < 12) {
     return `${months} month${months !== 1 ? "s" : ""}`
   }
