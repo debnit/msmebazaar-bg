@@ -1,10 +1,10 @@
 "use client"
 
 import type React from "react"
-import { useFeatureAccess } from "@/hooks/use-feature-access"
 import { useAuth } from "@/hooks/use-auth"
 import { usePro } from "@/hooks/use-pro"
 import { Feature, type UserRole, AccessLevel } from "@/types/feature"
+import { hasFeatureAccess, getFeatureAccessReason } from "@/utils/feature-gate"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -47,12 +47,11 @@ export function FeatureGate({
   requiredRole,
   requiredAccessLevel = AccessLevel.READ,
 }: FeatureGateProps) {
-  const { hasFeatureAccess, getFeatureAccessReason } = useFeatureAccess()
   const { user } = useAuth()
   const { isProUser, upgradeToPro } = usePro()
 
   // Check if user has access to the feature
-  const hasAccess = hasFeatureAccess(feature, requiredAccessLevel, requiredRole)
+  const hasAccess = hasFeatureAccess(user, feature, requiredAccessLevel, requiredRole)
 
   if (hasAccess) {
     return <div className={className}>{children}</div>
@@ -64,7 +63,7 @@ export function FeatureGate({
   }
 
   // Get the reason for access denial
-  const accessReason = getFeatureAccessReason(feature, requiredAccessLevel, requiredRole)
+  const accessReason = getFeatureAccessReason(user, feature, requiredAccessLevel, requiredRole)
 
   // Show upgrade prompt if user needs Pro subscription
   if (showUpgrade && accessReason.includes("Pro subscription")) {
@@ -205,10 +204,10 @@ export function useFeatureGate(
   requiredAccessLevel: AccessLevel = AccessLevel.READ,
   requiredRole?: UserRole,
 ) {
-  const { hasFeatureAccess, getFeatureAccessReason } = useFeatureAccess()
+  const { user } = useAuth()
 
-  const hasAccess = hasFeatureAccess(feature, requiredAccessLevel, requiredRole)
-  const reason = hasAccess ? null : getFeatureAccessReason(feature, requiredAccessLevel, requiredRole)
+  const hasAccess = hasFeatureAccess(user, feature, requiredAccessLevel, requiredRole)
+  const reason = hasAccess ? null : getFeatureAccessReason(user, feature, requiredAccessLevel, requiredRole)
 
   return {
     hasAccess,
@@ -234,10 +233,10 @@ export function FeatureStatus({
   feature: Feature
   className?: string
 }) {
-  const { hasFeatureAccess } = useFeatureAccess()
+  const { user } = useAuth()
   const { isProUser } = usePro()
 
-  const hasAccess = hasFeatureAccess(feature)
+  const hasAccess = hasFeatureAccess(user, feature)
 
   if (hasAccess) {
     return (
