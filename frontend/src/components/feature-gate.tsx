@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/frontend/src/hooks/use-auth"
 import { usePro } from "@/hooks/use-pro"
 import { Feature, type UserRole, AccessLevel } from "@/types/feature"
 import { hasFeatureAccess, getFeatureAccessReason } from "@/utils/feature-gate"
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Lock, Crown, Zap, AlertTriangle, Info } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/frontend/src/lib/utils"
 
 interface FeatureGateProps {
   feature: Feature

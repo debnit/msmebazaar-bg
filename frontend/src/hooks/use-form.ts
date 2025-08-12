@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useCallback, useMemo } from "react"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/frontend/src/hooks/use-toast"
 
 export interface ValidationRule<T = any> {
   required?: boolean | string

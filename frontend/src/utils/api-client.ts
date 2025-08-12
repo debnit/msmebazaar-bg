@@ -1,6 +1,6 @@
 "use client"
 
-import { toast } from "@/hooks/use-toast"
+import { toast } from "@/frontend/src/hooks/use-toast"
 
 export interface ApiResponse<T = any> {
   success: boolean

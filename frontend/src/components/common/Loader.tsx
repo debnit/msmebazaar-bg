@@ -1,6 +1,6 @@
 "use client"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/frontend/src/lib/utils"
 import { Loader2 } from "lucide-react"
 
 export interface LoaderProps {

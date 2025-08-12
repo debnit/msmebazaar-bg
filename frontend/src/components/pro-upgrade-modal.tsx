@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { usePro } from "@/hooks/use-pro"
 import { useAnalytics } from "@/components/analytics-tracker"
-import { formatCurrency } from "@/utils/formatters"
+import { formatCurrency } from "@/frontend/src/utils/formatters"
 
 interface ProUpgradeModalProps {
   isOpen: boolean

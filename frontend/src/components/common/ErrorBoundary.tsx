@@ -4,7 +4,7 @@ import React, { Component, type ErrorInfo, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertTriangle, RefreshCw, Home, Bug } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { toast } from "@/frontend/src/hooks/use-toast"
 
 interface Props {
   children: ReactNode

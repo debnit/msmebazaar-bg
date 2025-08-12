@@ -22,8 +22,8 @@ import {
   MessageCircle,
   ExternalLink,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { formatNumber } from "@/utils/formatters"
+import { cn } from "@/frontend/src/lib/utils"
+import { formatNumber } from "@/frontend/src/utils/formatters"
 import type { Vendor } from "@/types/marketplace"
 import { useAnalytics } from "@/components/analytics-tracker"
 

@@ -1,6 +1,6 @@
 "use client"
 
-import apiClient, { type ApiResponse } from "@/utils/api-client"
+import apiClient, { type ApiResponse } from "@/frontend/src/utils/api-client"
 import type {
   User,
   UserProfile,

@@ -4,7 +4,7 @@ import { useContext, useEffect, useState } from "react"
 import type { User, UserRole, SubscriptionPlan } from "@/types/user"
 import { AuthContext } from "@/components/providers/auth-provider"
 import { authApi } from "@/services/auth.api"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/frontend/src/hooks/use-toast"
 
 export interface AuthState {
   user: User | null

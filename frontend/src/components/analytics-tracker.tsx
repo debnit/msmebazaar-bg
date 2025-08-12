@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useEffect, useRef, useCallback } from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/frontend/src/hooks/use-auth"
 import { usePathname, useSearchParams } from "next/navigation"
 import type {
   AnalyticsEvent,

@@ -305,8 +305,8 @@ cat > "${BASE}/lib/api-client.ts" <<'TS'
  * lib/api-client.ts
  * Lightweight wrapper around fetch that injects auth token and handles JSON
  */
-import { getToken } from "../utils/storage";
-import { APIError } from "../utils/error-handler";
+import { getToken } from "../frontend/src/utils/storage";
+import { APIError } from "../frontend/src/utils/error-handler";
 
 export interface ApiClientOptions {
   baseUrl?: string;
