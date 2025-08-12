@@ -1,3 +1,4 @@
+'use client'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,6 +29,16 @@ export default function MSMEBazaarLanding() {
           <Link className="text-sm font-medium hover:text-blue-600 transition-colors" href="#contact">
             Contact
           </Link>
+       {/* Auth Buttons */}
+             <div className="flex items-center gap-2 ml-4">
+                <Button asChild variant="outline" size="sm">
+               <Link href="/login">Login</Link>
+                </Button>
+                <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                <Link href="/register">Register</Link>
+                </Button>
+              </div>
+
         </nav>
       </header>
 
