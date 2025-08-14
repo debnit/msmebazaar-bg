@@ -13,7 +13,7 @@ function createServiceProxyRoute(serviceName: string, serviceUrl: string, authRe
   const proxyBreaker = createServiceProxy(serviceName, serviceUrl);
 
   const featureGate = (req: any, res: any, next: any) => {
-    const relPath = `${serviceName}${req.path}`.replace(/^\/+/, "");
+    const relPath = `${serviceName}${req.path}`.replace(/^\/+/, "").toLowerCase();
     const feature = featureServiceMap[relPath];
     if (feature) {
       return requireFeature(feature)(req, res, next);
