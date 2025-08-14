@@ -1,34 +1,42 @@
-// src/shared/featureFlagTypes.ts
+// /shared/config/featureFlagTypes.ts
 
-/**
- * All available feature keys in MSMEBazaar.
- *
- * These must exactly match the keys in featureFlags.json.
- * Keeping them here ensures type safety across UI and backend.
- */
 export enum Feature {
   ADVANCED_ANALYTICS = "ADVANCED_ANALYTICS",
   CUSTOM_REPORTS = "CUSTOM_REPORTS",
   PRIORITY_SUPPORT = "PRIORITY_SUPPORT",
-  BULK_OPERATIONS = "BULK_OPERATIONS",
-  API_ACCESS = "API_ACCESS",
-  // Add more as they're added to featureFlags.json
+
+  PRO_UPGRADE = "PRO_UPGRADE",
+  PAYMENTS = "PAYMENTS",
+  PAYMENT_HISTORY = "PAYMENT_HISTORY",
+
+  AI_BUSINESS_VALUATION = "AI_BUSINESS_VALUATION",
+  RECOMMENDATIONS = "RECOMMENDATIONS",
+  MATCHMAKING = "MATCHMAKING",
+
+  LOAN_CTA = "LOAN_CTA",
+  BUSINESS_LOANS = "BUSINESS_LOANS",
+
+  COMPLIANCE_CHECKLIST = "COMPLIANCE_CHECKLIST",
+  EXIT_STRATEGY = "EXIT_STRATEGY",
+
+  CRM_PIPELINE = "CRM_PIPELINE",
+  LEADERSHIP_TRAINING = "LEADERSHIP_TRAINING",
+  DEALS_MARKETPLACE = "DEALS_MARKETPLACE",
+
+  ADMIN_FEATURE_TOGGLES = "ADMIN_FEATURE_TOGGLES",
+  ADMIN_USER_MANAGEMENT = "ADMIN_USER_MANAGEMENT",
+  SUPERADMIN_MONITORING = "SUPERADMIN_MONITORING",
+  SUPERADMIN_DATABASE_OPS = "SUPERADMIN_DATABASE_OPS",
+
+  USER_PROFILE = "USER_PROFILE",
+  BUSINESS_PROFILE = "BUSINESS_PROFILE",
+  BUSINESS_PROFILE_VERIFY = "BUSINESS_PROFILE_VERIFY",
+  MSME_NETWORKING = "MSME_NETWORKING",
+  B2B_MARKETPLACE = "B2B_MARKETPLACE",
+  MESSAGING = "MESSAGING",
+  ORDERS_MANAGEMENT = "ORDERS_MANAGEMENT"
 }
 
-/**
- * Access control levels for a feature.
- * Determines what the user can do if they have access.
- */
-export enum AccessLevel {
-  READ = "READ",
-  WRITE = "WRITE",
-  ADMIN = "ADMIN",
-}
-
-/**
- * User roles valid in the MSMEBazaar system.
- * Keep in sync with authentication/authorization logic.
- */
 export enum UserRole {
   ADMIN = "admin",
   SUPER_ADMIN = "super_admin",
@@ -40,23 +48,20 @@ export enum UserRole {
   DEVELOPER = "developer"
 }
 
-/**
- * Type for a single feature's metadata — matches the JSON schema.
- */
+export enum AccessLevel {
+  READ = "READ",
+  WRITE = "WRITE",
+  ADMIN = "ADMIN"
+}
+
 export interface FeatureMeta {
   label: string;
   description: string;
   enabled: boolean;
   proOnly?: boolean;
-  rolesEnabled?: UserRole[];          // Roles that can access without Pro
+  rolesEnabled?: UserRole[];
   accessLevel?: AccessLevel;
-  rolloutPercentage?: number;         // 0-100 % rollout
-  expiry?: string;                    // ISO date string, e.g., "2025-12-31T23:59:59Z"
-  availableRegions?: string[];        // ISO country codes
+  rolloutPercentage?: number;
+  expiry?: string;               // ISO date
+  availableRegions?: string[];   // ISO region codes
 }
-
-/**
- * Helper type for the whole feature flag config object.
- * Keys are Feature enum values, values are FeatureMeta objects.
- */
-export type FeatureFlagConfig = Record<Feature, FeatureMeta>;
