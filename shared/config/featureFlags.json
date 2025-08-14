@@ -8,7 +8,40 @@
     "accessLevel": "READ",
     "rolloutPercentage": 100
   },
-  "CUSTOM_REPORTS": {
+"AI_BUSINESS_VALUATION": {
+    "label": "AI Business Valuation",
+    "description": "Machine learning model estimating business valuation.",
+    "enabled": true,
+    "proOnly": true,
+    "rolesEnabled": ["msmeOwner", "investor"],
+    "accessLevel": "WRITE",
+    "rolloutPercentage": 100
+  },
+  "RECOMMENDATIONS": {
+    "label": "Personalized Recommendations",
+    "description": "ML-based content and product recommendations.",
+    "enabled": true,
+    "rolesEnabled": ["buyer", "seller"],
+    "accessLevel": "READ",
+    "rolloutPercentage": 80
+  },
+  "MATCHMAKING": {
+    "label": "Smart Matchmaking",
+    "description": "AI-powered matchmaking between buyers and sellers.",
+    "enabled": true,
+    "rolesEnabled": ["buyer", "seller"],
+    "accessLevel": "READ",
+    "rolloutPercentage": 100
+  },
+  "LOAN_CTA": {
+    "label": "Loan CTA",
+    "description": "Quick access to loan offers based on eligibility.",
+    "enabled": true,
+    "rolesEnabled": ["msmeOwner"],
+    "accessLevel": "READ",
+    "rolloutPercentage": 100
+  },
+"CUSTOM_REPORTS": {
     "label": "Custom Reports",
     "description": "Create and schedule tailor‑made business reports.",
     "enabled": true,
