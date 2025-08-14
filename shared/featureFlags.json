@@ -1,0 +1,47 @@
+{
+  "ADVANCED_ANALYTICS": {
+    "label": "Advanced Analytics",
+    "description": "Detailed business insights & performance metrics.",
+    "enabled": true,
+    "proOnly": true,
+    "rolesEnabled": ["admin", "seller"],
+    "accessLevel": "READ",
+    "rolloutPercentage": 100
+  },
+  "CUSTOM_REPORTS": {
+    "label": "Custom Reports",
+    "description": "Create and schedule tailor‑made business reports.",
+    "enabled": true,
+    "proOnly": true,
+    "rolesEnabled": ["admin"],
+    "accessLevel": "WRITE",
+    "rolloutPercentage": 50
+  },
+  "PRIORITY_SUPPORT": {
+    "label": "Priority Support",
+    "description": "Faster support SLA for premium members.",
+    "enabled": true,
+    "proOnly": true,
+    "rolesEnabled": ["buyer", "seller", "admin"],
+    "accessLevel": "READ",
+    "rolloutPercentage": 100
+  },
+  "BULK_OPERATIONS": {
+    "label": "Bulk Operations",
+    "description": "Modify products, orders, and records in bulk.",
+    "enabled": true,
+    "proOnly": true,
+    "rolesEnabled": ["seller"],
+    "accessLevel": "WRITE",
+    "rolloutPercentage": 30
+  },
+  "API_ACCESS": {
+    "label": "API Access",
+    "description": "Integrate MSMEBazaar with your systems via API.",
+    "enabled": true,
+    "proOnly": true,
+    "rolesEnabled": ["admin", "developer"],
+    "accessLevel": "READ",
+    "rolloutPercentage": 10
+  }
+}
