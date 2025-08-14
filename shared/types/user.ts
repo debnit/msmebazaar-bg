@@ -1,10 +1,14 @@
+// /shared/types/user.ts
+import { UserRole } from "./feature";
+
 export interface User {
   id: string;
   email: string;
   name: string;
   isPro: boolean;
-  roles: string[];
+  roles: UserRole[];
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface UserProfile {
@@ -12,4 +16,30 @@ export interface UserProfile {
   userId: string;
   phone?: string;
   avatarUrl?: string;
+  bio?: string;
+  address?: string;
+  socialLinks?: Record<string, string>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthTokens {
+  token: string;
+  refreshToken: string;
+  expiresIn: number; // seconds
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name: string;
+}
+
+export interface AuthenticatedRequest extends Express.Request {
+  user?: User;
 }
