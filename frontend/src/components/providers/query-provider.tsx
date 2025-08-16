@@ -1,21 +1,15 @@
 "use client"
 
-import type React from "react"
-
+import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
-import { useState } from "react"
-
-interface QueryProviderProps {
-  children: React.ReactNode
-}
 
 /**
- * React Query provider component that wraps the application
- * Provides data fetching, caching, and synchronization capabilities
+ * React Query provider component for MSMEBazaar
+ * Provides global query client configuration and dev tools
  */
-export function QueryProvider({ children }: QueryProviderProps) {
-  const [queryClient] = useState(
+export function QueryProvider({ children }: { children: React.ReactNode }) {
+  const [queryClient] = React.useState(
     () =>
       new QueryClient({
         defaultOptions: {
@@ -38,4 +32,3 @@ export function QueryProvider({ children }: QueryProviderProps) {
     </QueryClientProvider>
   )
 }
-  
