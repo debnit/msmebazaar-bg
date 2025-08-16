@@ -1,0 +1,7 @@
+model Listing {
+  id          String   @id @default(uuid())
+  msmeId      String
+  title       String
+  description String
+  msme        MSME     @relation(fields: [msmeId], references: [id])
+}

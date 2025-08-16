@@ -1,0 +1,11 @@
+model LoanApplication {
+  id           String   @id @default(uuid())
+  userId       String
+  loanAmount   Float
+  purpose      String
+  tenureMonths Int
+  documents    Json?
+  status       String   @default("pending")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

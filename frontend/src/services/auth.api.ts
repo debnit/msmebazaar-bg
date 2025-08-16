@@ -1,344 +1,210 @@
+"use client"
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiClient, type ApiResponse } from "./api-client"
+import { api, type ApiResponse } from "./api-client"
 import type { User, UserRegistration } from "@/types/user"
 
-/**
- * Authentication API interfaces
- */
-interface LoginRequest {
-  email: string
-  password: string
+// 🔹 Token Manager to handle access/refresh tokens
+class TokenManager {
+  static setTokens(token: string, refreshToken: string) {
+    localStorage.setItem("auth_token", token)
+    localStorage.setItem("refresh_token", refreshToken)
+  }
+
+  static getAccessToken() {
+    return localStorage.getItem("auth_token")
+  }
+
+  static getRefreshToken() {
+    return localStorage.getItem("refresh_token")
+  }
+
+  static clearTokens() {
+    localStorage.removeItem("auth_token")
+    localStorage.removeItem("refresh_token")
+  }
 }
 
-interface LoginResponse {
-  user: User
-  token: string
-  refreshToken: string
-  expiresIn: number
+// 🔹 Central Error Handler
+function handleApiError(error: any) {
+  if (error?.response?.data?.message) return error.response.data.message
+  if (error?.message) return error.message
+  return "An unexpected error occurred"
 }
 
-interface RegisterRequest extends UserRegistration {
-  confirmPassword: string
-}
+// ---------------------------------------------------------
+// 🔹 Service Layer
+// ---------------------------------------------------------
 
-interface RegisterResponse {
-  user: User
-  token: string
-  refreshToken: string
-  message: string
-}
-
-interface RefreshTokenRequest {
-  refreshToken: string
-}
-
-interface RefreshTokenResponse {
-  token: string
-  refreshToken: string
-  expiresIn: number
-}
-
-interface ForgotPasswordRequest {
-  email: string
-}
-
-interface ResetPasswordRequest {
-  token: string
-  password: string
-  confirmPassword: string
-}
-
-interface ChangePasswordRequest {
-  currentPassword: string
-  newPassword: string
-  confirmPassword: string
-}
-
-interface VerifyEmailRequest {
-  token: string
-}
-
-/**
- * Authentication API service class
- * Handles all authentication-related API calls
- */
 class AuthApiService {
-  /**
-   * Login user with email and password
-   */
-  async login(credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> {
-    return apiClient.post<ApiResponse<LoginResponse>>("/auth/login", credentials, {
-      requiresAuth: false,
-    })
+  async login(credentials: { email: string; password: string }) {
+    const resp = await api.auth.login(credentials)
+    if (resp.success && resp.data?.token) {
+      TokenManager.setTokens(resp.data.token, resp.data.refreshToken)
+    }
+    return resp
   }
 
-  /**
-   * Register new user
-   */
-  async register(userData: RegisterRequest): Promise<ApiResponse<RegisterResponse>> {
-    return apiClient.post<ApiResponse<RegisterResponse>>("/auth/register", userData, {
-      requiresAuth: false,
-    })
+  async register(data: UserRegistration & { confirmPassword: string }) {
+    const resp = await api.auth.register(data)
+    if (resp.success && resp.data?.token) {
+      TokenManager.setTokens(resp.data.token, resp.data.refreshToken)
+    }
+    return resp
   }
 
-  /**
-   * Refresh authentication token
-   */
-  async refreshToken(request: RefreshTokenRequest): Promise<ApiResponse<RefreshTokenResponse>> {
-    return apiClient.post<ApiResponse<RefreshTokenResponse>>("/auth/refresh", request, {
-      requiresAuth: false,
-    })
+  async refreshToken() {
+    const refreshToken = TokenManager.getRefreshToken()
+    const resp = await api.auth.refreshToken({ refreshToken })
+    if (resp.success && resp.data?.token) {
+      TokenManager.setTokens(resp.data.token, resp.data.refreshToken)
+    }
+    return resp
   }
 
-  /**
-   * Logout user (invalidate tokens)
-   */
-  async logout(): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<ApiResponse<{ message: string }>>("/auth/logout")
+  async logout() {
+    try {
+      await api.auth.logout()
+    } finally {
+      TokenManager.clearTokens()
+    }
+    return { success: true, message: "Logged out" }
   }
 
-  /**
-   * Get current user profile
-   */
-  async getCurrentUser(): Promise<ApiResponse<User>> {
-    return apiClient.get<ApiResponse<User>>("/auth/me")
+  async getCurrentUser() {
+    return api.user.getProfile()
   }
 
-  /**
-   * Send forgot password email
-   */
-  async forgotPassword(request: ForgotPasswordRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<ApiResponse<{ message: string }>>("/auth/forgot-password", request, {
-      requiresAuth: false,
-    })
+  async updateProfile(userData: Partial<User>) {
+    return api.user.updateProfile(userData)
   }
 
-  /**
-   * Reset password with token
-   */
-  async resetPassword(request: ResetPasswordRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<ApiResponse<{ message: string }>>("/auth/reset-password", request, {
-      requiresAuth: false,
-    })
+  async deleteAccount() {
+    const resp = await apiClient.delete<ApiResponse<{ message: string }>>("/auth/account")
+    TokenManager.clearTokens()
+    return resp
   }
 
-  /**
-   * Change password for authenticated user
-   */
-  async changePassword(request: ChangePasswordRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<ApiResponse<{ message: string }>>("/auth/change-password", request)
+  async forgotPassword(email: string) {
+    return api.auth.forgotPassword(email)
   }
 
-  /**
-   * Verify email address
-   */
-  async verifyEmail(request: VerifyEmailRequest): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<ApiResponse<{ message: string }>>("/auth/verify-email", request, {
-      requiresAuth: false,
-    })
+  async resetPassword(token: string, password: string, confirmPassword: string) {
+    return api.auth.resetPassword(token, password, confirmPassword)
   }
 
-  /**
-   * Resend email verification
-   */
-  async resendVerification(): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.post<ApiResponse<{ message: string }>>("/auth/resend-verification")
+  async changePassword(data: { currentPassword: string; newPassword: string }) {
+    return api.user.changePassword(data)
   }
 
-  /**
-   * Update user profile
-   */
-  async updateProfile(userData: Partial<User>): Promise<ApiResponse<User>> {
-    return apiClient.patch<ApiResponse<User>>("/auth/profile", userData)
-  }
-
-  /**
-   * Delete user account
-   */
-  async deleteAccount(): Promise<ApiResponse<{ message: string }>> {
-    return apiClient.delete<ApiResponse<{ message: string }>>("/auth/account")
+  async verifyEmail(token: string) {
+    return api.auth.verifyEmail(token)
   }
 }
 
-// Export singleton instance
 export const authApiService = new AuthApiService()
 
-/**
- * React Query hooks for authentication
- */
+// ---------------------------------------------------------
+// 🔹 React Query Hooks
+// ---------------------------------------------------------
 
-/**
- * Hook for user login mutation
- */
 export function useLogin() {
   const queryClient = useQueryClient()
-
   return useMutation({
-    mutationFn: (credentials: LoginRequest) => authApiService.login(credentials),
+    mutationFn: (credentials: { email: string; password: string }) =>
+      authApiService.login(credentials),
     onSuccess: (response) => {
-      // Invalidate and refetch user-related queries
-      queryClient.invalidateQueries({ queryKey: ["auth", "user"] })
-      queryClient.setQueryData(["auth", "user"], response.data?.user)
+      if (response.success && response.data?.user) {
+        queryClient.setQueryData(["auth", "user"], response.data.user)
+      }
     },
     onError: (error) => {
-      console.error("Login failed:", error)
+      console.error("Login failed:", handleApiError(error))
     },
   })
 }
 
-/**
- * Hook for user registration mutation
- */
 export function useRegister() {
   const queryClient = useQueryClient()
-
   return useMutation({
-    mutationFn: (userData: RegisterRequest) => authApiService.register(userData),
+    mutationFn: (data: UserRegistration & { confirmPassword: string }) =>
+      authApiService.register(data),
     onSuccess: (response) => {
-      queryClient.invalidateQueries({ queryKey: ["auth", "user"] })
-      queryClient.setQueryData(["auth", "user"], response.data?.user)
+      if (response.success && response.data?.user) {
+        queryClient.setQueryData(["auth", "user"], response.data.user)
+      }
     },
     onError: (error) => {
-      console.error("Registration failed:", error)
+      console.error("Registration failed:", handleApiError(error))
     },
   })
 }
 
-/**
- * Hook for logout mutation
- */
 export function useLogout() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: () => authApiService.logout(),
-    onSuccess: () => {
-      // Clear all cached data on logout
-      queryClient.clear()
-    },
+    onSuccess: () => queryClient.clear(),
     onError: (error) => {
-      console.error("Logout failed:", error)
-      // Clear cache even if logout fails
+      console.error("Logout failed:", handleApiError(error))
       queryClient.clear()
     },
   })
 }
 
-/**
- * Hook for getting current user
- */
 export function useCurrentUser() {
   return useQuery({
     queryKey: ["auth", "user"],
-    queryFn: () => authApiService.getCurrentUser(),
+    queryFn: async () => {
+      const resp = await authApiService.getCurrentUser()
+      return resp.data
+    },
     staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
     retry: (failureCount, error: any) => {
-      // Don't retry on 401 (unauthorized)
       if (error?.status === 401) return false
-      return failureCount < 3
+      return failureCount < 2
     },
   })
 }
 
-/**
- * Hook for forgot password mutation
- */
-export function useForgotPassword() {
+export function useRefreshToken() {
   return useMutation({
-    mutationFn: (request: ForgotPasswordRequest) => authApiService.forgotPassword(request),
+    mutationFn: () => authApiService.refreshToken(),
     onError: (error) => {
-      console.error("Forgot password failed:", error)
+      console.error("Token refresh failed:", handleApiError(error))
+      TokenManager.clearTokens()
     },
   })
 }
 
-/**
- * Hook for reset password mutation
- */
-export function useResetPassword() {
-  return useMutation({
-    mutationFn: (request: ResetPasswordRequest) => authApiService.resetPassword(request),
-    onError: (error) => {
-      console.error("Reset password failed:", error)
-    },
-  })
-}
-
-/**
- * Hook for change password mutation
- */
-export function useChangePassword() {
-  return useMutation({
-    mutationFn: (request: ChangePasswordRequest) => authApiService.changePassword(request),
-    onError: (error) => {
-      console.error("Change password failed:", error)
-    },
-  })
-}
-
-/**
- * Hook for email verification mutation
- */
-export function useVerifyEmail() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (request: VerifyEmailRequest) => authApiService.verifyEmail(request),
-    onSuccess: () => {
-      // Refetch user data after email verification
-      queryClient.invalidateQueries({ queryKey: ["auth", "user"] })
-    },
-    onError: (error) => {
-      console.error("Email verification failed:", error)
-    },
-  })
-}
-
-/**
- * Hook for resending email verification
- */
-export function useResendVerification() {
-  return useMutation({
-    mutationFn: () => authApiService.resendVerification(),
-    onError: (error) => {
-      console.error("Resend verification failed:", error)
-    },
-  })
-}
-
-/**
- * Hook for updating user profile
- */
 export function useUpdateProfile() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: (userData: Partial<User>) => authApiService.updateProfile(userData),
     onSuccess: (response) => {
-      // Update cached user data
-      queryClient.setQueryData(["auth", "user"], response.data)
+      if (response.success && response.data) {
+        queryClient.setQueryData(["auth", "user"], response.data)
+      }
       queryClient.invalidateQueries({ queryKey: ["auth", "user"] })
     },
     onError: (error) => {
-      console.error("Profile update failed:", error)
+      console.error("Profile update failed:", handleApiError(error))
     },
   })
 }
 
-/**
- * Hook for deleting user account
- */
 export function useDeleteAccount() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: () => authApiService.deleteAccount(),
     onSuccess: () => {
-      // Clear all data after account deletion
       queryClient.clear()
     },
     onError: (error) => {
-      console.error("Account deletion failed:", error)
+      console.error("Account deletion failed:", handleApiError(error))
+      queryClient.clear()
+      TokenManager.clearTokens()
     },
   })
 }

@@ -3,15 +3,11 @@
 import React from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-<<<<<<< HEAD:frontend/src/components/error-boundary.tsx
 import { AlertTriangle, RefreshCw } from "lucide-react"
-=======
->>>>>>> ed12e6a2 (feat: add foundational providers and update layout):components/error-boundary.tsx
 
 interface ErrorBoundaryState {
   hasError: boolean
   error?: Error
-<<<<<<< HEAD:frontend/src/components/error-boundary.tsx
   errorInfo?: React.ErrorInfo
 }
 
@@ -26,16 +22,6 @@ interface ErrorBoundaryProps {
  */
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
-=======
-}
-
-/**
- * Error boundary component for MSMEBazaar
- * Catches and displays JavaScript errors in the component tree
- */
-export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
-  constructor(props: { children: React.ReactNode }) {
->>>>>>> ed12e6a2 (feat: add foundational providers and update layout):components/error-boundary.tsx
     super(props)
     this.state = { hasError: false }
   }
@@ -46,20 +32,16 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Error caught by boundary:", error, errorInfo)
-<<<<<<< HEAD:frontend/src/components/error-boundary.tsx
     this.setState({ error, errorInfo })
     // TODO: Send to logging service
   }
 
   handleReset = () => {
     this.setState({ hasError: false, error: undefined, errorInfo: undefined })
-=======
->>>>>>> ed12e6a2 (feat: add foundational providers and update layout):components/error-boundary.tsx
   }
 
   render() {
     if (this.state.hasError) {
-<<<<<<< HEAD:frontend/src/components/error-boundary.tsx
       // Custom fallback if provided
       if (this.props.fallback) {
         const FallbackComponent = this.props.fallback
@@ -97,22 +79,6 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
                   Refresh Page
                 </Button>
               </div>
-=======
-      return (
-        <div className="flex min-h-screen items-center justify-center p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle className="text-destructive">Something went wrong</CardTitle>
-              <CardDescription>An unexpected error occurred. Please try refreshing the page.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {process.env.NODE_ENV === "development" && this.state.error && (
-                <pre className="text-xs text-muted-foreground overflow-auto">{this.state.error.message}</pre>
-              )}
-              <Button onClick={() => window.location.reload()} className="w-full">
-                Refresh Page
-              </Button>
->>>>>>> ed12e6a2 (feat: add foundational providers and update layout):components/error-boundary.tsx
             </CardContent>
           </Card>
         </div>
@@ -122,7 +88,6 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     return this.props.children
   }
 }
-<<<<<<< HEAD:frontend/src/components/error-boundary.tsx
 
 /**
  * Hook-based error handler for functional components
@@ -155,5 +120,3 @@ export function ErrorFallback({
     </div>
   )
 }
-=======
->>>>>>> ed12e6a2 (feat: add foundational providers and update layout):components/error-boundary.tsx
