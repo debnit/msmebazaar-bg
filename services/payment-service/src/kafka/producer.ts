@@ -1,18 +1,12 @@
-import { Kafka } from 'kafkajs';
+import { Kafka } from "kafkajs";
 
-const kafka = new Kafka({
-  brokers: [process.env.KAFKA_BROKER || 'localhost:9092']
-});
+const kafka = new Kafka({ brokers: [process.env.KAFKA_BROKER || "localhost:9092"] });
+export const producer = kafka.producer();
 
-const producer = kafka.producer();
-
-export async function startProducer() {
+export async function emitPaymentEvent(event: object) {
   await producer.connect();
-}
-
-export async function emitPaymentEvent(topic: string, message: any) {
   await producer.send({
-    topic,
-    messages: [{ value: JSON.stringify(message) }]
+    topic: "payment_events",
+    messages: [{ value: JSON.stringify(event) }],
   });
 }

@@ -1,4 +1,6 @@
-// Core Payment Types
+// frontend/src/types/payment.ts
+
+// ------------------ Core Payment Types ------------------
 export enum PaymentStatus {
   PENDING = "pending",
   PROCESSING = "processing",
@@ -25,7 +27,13 @@ export enum Currency {
   USD = "USD",
 }
 
-// Razorpay Integration Types
+export enum PaymentGateway {
+  RAZORPAY = "razorpay",
+  STRIPE = "stripe",
+  PAYU = "payu",
+}
+
+// ------------------ Razorpay Integration Types ------------------
 export interface RazorpayConfig {
   key_id: string
   key_secret: string
@@ -38,7 +46,11 @@ export interface RazorpayOrderOptions {
   amount: number // in paise
   currency: Currency
   receipt: string
-  notes?: Record<string, string>
+  notes?: {
+    customerId?: string
+    invoiceId?: string
+    [key: string]: string
+  }
   partial_payment?: boolean
 }
 
@@ -70,7 +82,7 @@ export interface RazorpayPaymentResponse {
   razorpay_signature: string
 }
 
-// Payment Transaction Types
+// ------------------ Payment Transaction Types ------------------
 export interface PaymentTransaction {
   id: string
   orderId: string
@@ -79,14 +91,14 @@ export interface PaymentTransaction {
   currency: Currency
   status: PaymentStatus
   method: PaymentMethod
-  gateway: "razorpay" | "stripe" | "payu"
+  gateway: PaymentGateway
   gatewayTransactionId?: string
   gatewayOrderId?: string
   description?: string
   metadata?: Record<string, any>
-  createdAt: Date
-  updatedAt: Date
-  completedAt?: Date
+  createdAt: string // use ISO string for API
+  updatedAt: string
+  completedAt?: string
   failureReason?: string
 }
 
@@ -97,11 +109,11 @@ export interface PaymentRefund {
   reason: string
   status: "pending" | "processed" | "failed"
   gatewayRefundId?: string
-  processedAt?: Date
-  createdAt: Date
+  processedAt?: string
+  createdAt: string
 }
 
-// Subscription Types
+// ------------------ Subscription Types ------------------
 export enum SubscriptionStatus {
   ACTIVE = "active",
   INACTIVE = "inactive",
@@ -136,8 +148,8 @@ export interface SubscriptionPlan {
   trialDays?: number
   setupFee?: number
   discountPercentage?: number
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Subscription {
@@ -146,19 +158,19 @@ export interface Subscription {
   planId: string
   plan: SubscriptionPlan
   status: SubscriptionStatus
-  currentPeriodStart: Date
-  currentPeriodEnd: Date
-  trialStart?: Date
-  trialEnd?: Date
-  cancelledAt?: Date
+  currentPeriodStart: string
+  currentPeriodEnd: string
+  trialStart?: string
+  trialEnd?: string
+  cancelledAt?: string
   cancelAtPeriodEnd: boolean
   gatewaySubscriptionId?: string
   metadata?: Record<string, any>
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
 }
 
-// Invoice Types
+// ------------------ Invoice Types ------------------
 export enum InvoiceStatus {
   DRAFT = "draft",
   SENT = "sent",
@@ -201,18 +213,14 @@ export interface Invoice {
   taxAmount: number
   totalAmount: number
   currency: Currency
-  dueDate: Date
-  paidAt?: Date
-
-  // GST Details
+  dueDate: string
+  paidAt?: string
   gstDetails?: {
     cgst: number
     sgst: number
     igst: number
     totalGst: number
   }
-
-  // Billing Details
   billingAddress: {
     name: string
     email: string
@@ -226,13 +234,12 @@ export interface Invoice {
     }
     gstDetails?: GSTDetails
   }
-
   metadata?: Record<string, any>
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
 }
 
-// Payment Analytics Types
+// ------------------ Analytics Types ------------------
 export interface PaymentAnalytics {
   totalRevenue: number
   totalTransactions: number
@@ -274,7 +281,7 @@ export interface SubscriptionAnalytics {
   }>
 }
 
-// Webhook Types
+// ------------------ Webhook Types ------------------
 export enum WebhookEventType {
   PAYMENT_AUTHORIZED = "payment.authorized",
   PAYMENT_CAPTURED = "payment.captured",
@@ -291,13 +298,13 @@ export interface WebhookEvent {
   type: WebhookEventType
   data: Record<string, any>
   signature: string
-  timestamp: Date
+  timestamp: string
   processed: boolean
-  processedAt?: Date
+  processedAt?: string
   error?: string
 }
 
-// Payment Gateway Response Types
+// ------------------ Gateway Response Types ------------------
 export interface PaymentGatewayResponse {
   success: boolean
   transactionId?: string
@@ -309,13 +316,14 @@ export interface PaymentGatewayResponse {
   error?: {
     code: string
     description: string
+    field?: string
   }
   metadata?: Record<string, any>
 }
 
-// Indian Payment Method Specific Types
+// ------------------ Indian Payment Specific Types ------------------
 export interface UPIPayment {
-  vpa: string // Virtual Payment Address
+  vpa: string
   transactionId: string
   amount: number
   description?: string
@@ -328,12 +336,20 @@ export interface NetBankingPayment {
   ifscCode?: string
 }
 
+export enum WalletType {
+  PAYTM = "paytm",
+  PHONEPE = "phonepe",
+  GOOGLEPAY = "googlepay",
+  AMAZONPAY = "amazonpay",
+  MOBIKWIK = "mobikwik",
+}
+
 export interface WalletPayment {
-  walletType: "paytm" | "phonepe" | "googlepay" | "amazonpay" | "mobikwik"
+  walletType: WalletType
   walletId?: string
 }
 
-// EMI Options
+// ------------------ EMI Options ------------------
 export interface EMIOption {
   bankName: string
   tenure: number // in months
@@ -343,7 +359,7 @@ export interface EMIOption {
   processingFee?: number
 }
 
-// Payment Form Types
+// ------------------ Payment Form Types ------------------
 export interface PaymentFormData {
   amount: number
   currency: Currency
@@ -365,7 +381,7 @@ export interface PaymentFormData {
   metadata?: Record<string, any>
 }
 
-// Payment Configuration
+// ------------------ Payment Configuration ------------------
 export interface PaymentConfig {
   enabledMethods: PaymentMethod[]
   minAmount: number
@@ -377,29 +393,4 @@ export interface PaymentConfig {
   webhookUrl: string
   returnUrl: string
   cancelUrl: string
-}
-
-// Export all types
-export type {
-  PaymentTransaction,
-  PaymentRefund,
-  SubscriptionPlan,
-  Subscription,
-  Invoice,
-  InvoiceItem,
-  GSTDetails,
-  PaymentAnalytics,
-  SubscriptionAnalytics,
-  WebhookEvent,
-  PaymentGatewayResponse,
-  UPIPayment,
-  NetBankingPayment,
-  WalletPayment,
-  EMIOption,
-  PaymentFormData,
-  PaymentConfig,
-  RazorpayConfig,
-  RazorpayOrderOptions,
-  RazorpayPaymentOptions,
-  RazorpayPaymentResponse,
 }

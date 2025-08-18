@@ -1,18 +1,13 @@
-import prisma from "../db/prismaClient";
+import * as paymentRepo from "../repositories/payment.repository";
 
 export async function createPayment(userId: string, data: any) {
-  return prisma.payment.create({
-    data: {
-      userId,
-      ...data,
-      status: "initiated",
-    },
+  return paymentRepo.createPayment({
+    userId,
+    ...data,
+    status: "initiated",
   });
 }
 
 export async function updatePaymentStatus(paymentId: string, status: string, gatewayRef?: string) {
-  return prisma.payment.update({
-    where: { id: paymentId },
-    data: { status, gatewayRef },
-  });
+  return paymentRepo.updatePaymentStatus(paymentId, status, gatewayRef);
 }

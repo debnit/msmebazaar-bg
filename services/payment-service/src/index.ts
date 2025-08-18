@@ -1,22 +1,16 @@
 import express from "express";
-import { Config } from "./config/env";
-import { logger } from "./utils/logger";
-import cors from "cors";
 import paymentRoutes from "./routes/payment.routes";
-// import your routes here, e.g.:
-// import apiRoutes from "./routes/api.routes";
 
 const app = express();
 app.use(express.json());
-app.use(cors());
-
-// app.use("/api", apiRoutes);
-
-app.listen(Config.port, () => {
-  logger.info("payment-service running on port " + Config.port);
-});
-
 
 app.use("/payments", paymentRoutes);
-export default app;
 
+app.get("/health", (_, res) => res.send("OK"));
+
+const PORT = process.env.PORT || 4004;
+app.listen(PORT, () => {
+  console.log(`Payment service running on port ${PORT}`);
+});
+
+export default app;

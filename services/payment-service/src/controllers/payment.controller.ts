@@ -1,22 +1,27 @@
 import { Request, Response } from "express";
-import { z } from "zod";
-import { createPaymentSchema } from "../schemas/payment.schema";
-import { createPayment, updatePaymentStatus } from "../services/payment.service";
+import { createPaymentSchema, updatePaymentStatusSchema } from "../validation/payment.schema";
+import * as paymentService from "../services/payment.service";
+import { Feature } from "../../../shared/config/featureFlagTypes";
+import { requireFeature } from "../middlewares/featureGating";
 import { getUserIdFromReq } from "../utils/helpers";
 
 export async function createPaymentController(req: Request, res: Response) {
   const userId = getUserIdFromReq(req);
-  const parse = createPaymentSchema.safeParse(req.body);
-  if (!parse.success)
-    return res.status(400).json({ error: "Invalid data", details: parse.error.flatten() });
 
-  const payment = await createPayment(userId, parse.data);
+  const parsed = createPaymentSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid request data", details: parsed.error.flatten() });
+
+  // Feature check handled via middleware, optionally check here again
+  const payment = await paymentService.createPayment(userId, parsed.data);
   res.status(201).json(payment);
 }
 
 export async function updatePaymentStatusController(req: Request, res: Response) {
   const { paymentId } = req.params;
-  const { status, gatewayRef } = req.body;
-  const payment = await updatePaymentStatus(paymentId, status, gatewayRef);
+
+  const parsed = updatePaymentStatusSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid request data", details: parsed.error.flatten() });
+
+  const payment = await paymentService.updatePaymentStatus(paymentId, parsed.data.status, parsed.data.gatewayRef);
   res.json(payment);
 }

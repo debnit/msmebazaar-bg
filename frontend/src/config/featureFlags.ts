@@ -1,4 +1,4 @@
-import rawFlags from "../../../shared/featureFlags.json";
+import rawFlags from "../../../shared/config/featureFlags.json";
 import { Feature, AccessLevel, UserRole } from "@/types/feature";
 
 export interface FeatureMeta {
