@@ -11,3 +11,11 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+- name: Import MSME profile parquet data
+  run: |
+    node services/recommendation-service/scripts/batch_import_parquet.js data/msme_profile.parquet msmeProfile
+
+- name: Import listing catalog parquet data
+  run: |
+    node services/recommendation-service/scripts/batch_import_parquet.js data/listing_catalog.parquet listingCatalog

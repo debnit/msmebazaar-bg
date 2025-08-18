@@ -1,1 +1,28 @@
-../../../shared/db/schema.prisma
+model Buyer {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  isPro        Boolean  @default(false)
+  onboardedProAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  messages     Message[]
+  recommendations Recommendation[]
+}
+
+model Message {
+  id           String   @id @default(uuid())
+  buyerId      String
+  content      String
+  createdAt    DateTime @default(now())
+  buyer        Buyer    @relation(fields: [buyerId], references: [id])
+}
+
+model Recommendation {
+  id           String   @id @default(uuid())
+  buyerId      String
+  content      String
+  createdAt    DateTime @default(now())
+  buyer        Buyer    @relation(fields: [buyerId], references: [id])
+}

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import requireAuth from "../middlewares/requireAuth";
-import * as controller from "../controllers/recommendation.controller";
+import { RecommendationController } from '../controllers/recommendation.controller';
 import { validateRequest } from "../middlewares/validateRequest";
 import { recommendationRequestSchema } from "@shared/validation/recommendation.schema";
 
@@ -10,9 +10,11 @@ router.use(requireAuth);
 router.post(
   "/recommend",
   validateRequest(recommendationRequestSchema),
-  controller.getPersonalizedRecommendations
+  RecommendationController.getPersonalizedRecommendations
 );
 
 router.get("/history", controller.getUserRecommendationHistory);
+router.get("/listings", RecommendationController.getRecommendations);
+router.post("/events", RecommendationController.logEvent);
 
 export default router;

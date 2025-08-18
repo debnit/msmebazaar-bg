@@ -1,1 +1,10 @@
-../../../shared/db/schema.prisma
+model UserEvent {
+  id           Int      @id @default(autoincrement())
+  userId       String
+  eventType    String
+  listingId    String?
+  queryText    String?
+  filters      Json?
+  ts           DateTime @default(now())
+  // Partitioning via raw SQL migrations
+}

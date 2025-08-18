@@ -1,1 +1,22 @@
-../../../shared/db/schema.prisma
+// File: services/matchmaking-service/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Matchmaking {
+  id               String   @id @default(uuid())
+  msmeId           String
+  matchedEntityId  String
+  score            Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  // Foreign keys (optional for referential integrity)
+  // MSME            MSME? @relation(fields: [msmeId], references: [id])
+  // User            User? @relation(fields: [matchedEntityId], references: [id])
+}

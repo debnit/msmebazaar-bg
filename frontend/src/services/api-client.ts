@@ -9,6 +9,7 @@ import type {
 import type { Product, Recommendation, ChatSession } from "@/types/marketplace";
 import type { Order } from "@/types/orders";
 import type { User } from "@/types/user"; // assuming you have this
+import * as matchmakingApi from "./matchmaking.api";
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -236,6 +237,16 @@ export const api = {
   superadmin: {
     getSystemHealth: () => apiClient.get("/superadmin/system-health"),
     databaseOps: (action: string) => apiClient.post("/superadmin/database", { action }),
+  },
+  recommendation: {
+    getListings: (params: { role: string; userId: string; k?: number }) =>
+      apiClient.get<{ items: Recommendation[] }>("/recommendations/listings", params),
+    logUserEvent: (event: any) => apiClient.post("/recommendations/events", event),
+  },
+  matchmaking: {
+    // Expose the function exported above
+    getMatchesForMsme: matchmakingApi.getMatchesForMsme,
+    // add other matchmaking endpoints as needed
   },
 };
 

@@ -1,16 +1,14 @@
 import express from "express";
-import { Config } from "./config/env";
-import { logger } from "./utils/logger";
-import cors from "cors";
+import matchmakingRoutes from "./routes/matchmaking.routes";
 import { startConsumer } from "./kafka/consumer";
+import { startProducer } from "./kafka/producer";
 
 const app = express();
 app.use(express.json());
-app.use(cors());
 
-// TODO: Add routes if HTTP API required
+app.use("/matchmaking", matchmakingRoutes);
 
-app.listen(Config.port, () => {
-  logger.info("matchmaking-service running on port " + Config.port);
-  startConsumer().catch(err => logger.error("Kafka consumer failed:", err));
-});
+startProducer();
+startConsumer();
+
+export default app;

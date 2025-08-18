@@ -1,101 +1,76 @@
 import jwt, { JwtPayload, SignOptions } from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { Request, Response, NextFunction } from "express";
 
-// ===== JWT Section =====
+export type UserRole = "buyer" | "seller" | "agent" | "investor" | "msmeowner" | "founder" | "admin" | "superadmin";
 
 export interface BaseJwtClaims {
-  id: string;                // always userId
-  roles: string[];           // could be string enums
+  id: string;                // userId
+  roles: UserRole[];         // enum
   isPro?: boolean;
-  [key: string]: any;        // custom claims (e.g. tenant, permissions)
+  email?: string;
+  name?: string;
+  onboardedProAt?: string;   // e.g. ISO date for ₹99 onboarding
+  [key: string]: any;
 }
 
-// JWT creation
+// JWT Sign
 export function createJwtToken(
-  payload: BaseJwtClaims, 
-  secret: string, 
+  payload: BaseJwtClaims,
+  secret: string,
   expiresIn: string | number = "1d",
   options: Partial<SignOptions> = {}
 ): string {
   return jwt.sign(payload, secret, { expiresIn, ...options });
 }
 
-// JWT verification
+// JWT Verify (returns null if invalid)
 export function verifyJwtToken<T extends BaseJwtClaims = BaseJwtClaims>(
-  token: string, 
+  token: string,
   secret: string
-): T {
-  return jwt.verify(token, secret) as T;
+): T | null {
+  try {
+    return jwt.verify(token, secret) as T;
+  } catch {
+    return null;
+  }
 }
 
-// ========================
-
-
-// ===== Password Hashing Section =====
-
-/**
- * Hash and salt a password for storage.
- * Uses bcrypt under the hood, can swap for argon2 if needed.
- */
+// Password hashing & verification (can switch argon2 if wanted)
 export async function hashPassword(password: string, saltRounds = 12): Promise<string> {
   return bcrypt.hash(password, saltRounds);
 }
-
-/**
- * Validate a user's password against a stored hash.
- */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
 }
 
-// ========================
-
-
-// ===== Session/Context Utilities =====
-
-export interface SessionUser {
-  id: string;
-  email: string;
-  name: string;
-  roles: string[];
-  isPro?: boolean;
-  [key: string]: any;
+// Session user extracted from req
+export interface SessionUser extends BaseJwtClaims {
+  // Optionally include other session fields
 }
 
-/**
- * Extracts user/account info from req object 
- * (assuming JWT middleware writes req.user)
- */
+// Extract user from request
 export function getSessionUser(req: any): SessionUser | null {
-  if (req?.user && req.user.id) {
-    return req.user as SessionUser;
-  }
-  if (req?.session && req.session.user) {
-    return req.session.user as SessionUser;
-  }
+  if (req?.user && req.user.id) return req.user as SessionUser;
+  if (req?.session && req.session.user && req.session.user.id) return req.session.user as SessionUser;
   return null;
 }
 
-// Middleware for Express to attach user from JWT (for S2S use)
-import { Request, Response, NextFunction } from "express";
-
-/**
- * Optionally use as fallback JWT check inside any microservice (when bypassing api-gateway).
- * Usage: app.use(sharedAuth.jwtMw(secret))
- */
-export function jwtMw(secret: string) {
-  return function (req: Request & { user?: SessionUser }, res: Response, next: NextFunction) {
-    const auth = req.headers["authorization"];
-    if (auth && auth.startsWith("Bearer ")) {
-      try {
-        req.user = verifyJwtToken(auth.split(" ")[1], secret);
-      } catch {
-        // Leave user undefined, or optionally reject here
-      }
+// JWT Express middleware, usable in any Node/Express service, supports strict rejectOnInvalid
+export function jwtMw(secret: string, rejectOnInvalid = false) {
+  return (req: Request & { user?: SessionUser }, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      if (rejectOnInvalid) return res.status(401).json({ error: "Authorization header missing or malformed" });
+      return next();
     }
+    const token = authHeader.split(" ")[1];
+    const payload = verifyJwtToken(token, secret);
+    if (!payload) {
+      if (rejectOnInvalid) return res.status(401).json({ error: "Invalid or expired token" });
+      return next();
+    }
+    req.user = payload;
     next();
   };
 }
-
-// ========================
-

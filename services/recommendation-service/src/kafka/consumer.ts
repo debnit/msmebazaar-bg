@@ -2,25 +2,21 @@ import { Kafka } from "kafkajs";
 import { Config } from "../config/env";
 import { logger } from "../utils/logger";
 
-const kafka = new Kafka({
-  clientId: "recommendation-service",
-  brokers: Config.kafkaBrokers,
-});
+const kafka = new Kafka({ brokers: [process.env.KAFKA_BROKER || 'localhost:9092'] });
 
-const consumer = kafka.consumer({ groupId: Config.kafkaGroupId });
 
-export async function startConsumer() {
+export const consumer = kafka.consumer({ groupId: 'reco-events' });
+
+
+export async function startRecoConsumer() {
   await consumer.connect();
-  await consumer.subscribe({ topic: Config.kafkaTopic });
+  await consumer.subscribe({ topic: 'reco.events.raw', fromBeginning: false });
   await consumer.run({
     eachMessage: async ({ message }) => {
-      try {
-        const payload = JSON.parse(message.value?.toString() || "{}");
-        // TODO: Implement message processing logic
-        logger.info({ msg: "Message consumed", payload });
-      } catch (error) {
-        logger.error({ msg: "Failed to process message", error });
-      }
-    },
+      // handle event, e.g., update embeddings
+      const evt = JSON.parse(message.value?.toString() || '{}');
+      // optionally forward to ML model monitoring, update user profile state, etc.
+    }
   });
 }
+

@@ -17,6 +17,17 @@ export default function BuyerRecommendations() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+  api.recommendation.getListings({ role: "buyer", userId: currentUserId })
+    .then(res => {
+      if (res.success && res.data?.items) {
+        setRecs(res.data.items);
+      }
+    })
+    .finally(() => setLoading(false));
+}, []);
+
+
   if (loading) return <p>Loading recommendations...</p>;
   if (!recs.length) return <p>No recommendations available.</p>;
 

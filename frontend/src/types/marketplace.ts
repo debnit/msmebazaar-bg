@@ -672,3 +672,29 @@ export interface OrderTrendData {
   orders: number
   averageOrderValue: number
 }
+
+export interface Recommendation {
+  id: string;
+  title: string;
+  description: string;
+  score_retrieval?: number;
+  score_ranked?: number;
+  // any other fields needed by this UI
+}
+
+export interface matchmakingResult {
+  msmeId: string;
+  matchedEntityId: string;
+  score: number;
+  createdAt: string;
+  // Extend as needed...
+}
+
+export interface chatSession {
+  msmeId: string;
+  matchedEntityId: string;
+  score: number;
+  createdAt: string;
+  // Extend as needed...
+}
+

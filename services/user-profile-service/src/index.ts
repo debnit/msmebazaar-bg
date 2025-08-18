@@ -2,6 +2,8 @@ import express from "express";
 import { Config } from "./config/env";
 import { logger } from "./utils/logger";
 import cors from "cors";
+import userProfileRoutes from "./routes/userProfile.routes";
+
 
 // import your routes here, e.g.:
 // import apiRoutes from "./routes/api.routes";
@@ -15,3 +17,7 @@ app.use(cors());
 app.listen(Config.port, () => {
   logger.info("user-profile-service running on port " + Config.port);
 });
+
+app.use("/user", userProfileRoutes);
+
+export default app;

@@ -1,17 +1,8 @@
-import express from "express";
-import { Config } from "./config/env";
-import { logger } from "./utils/logger";
-import cors from "cors";
+import express from "express"
+import buyerRoutes from "./routes/buyer.routes"
 
-// import your routes here, e.g.:
-// import apiRoutes from "./routes/api.routes";
-
-const app = express();
-app.use(express.json());
-app.use(cors());
-
-// app.use("/api", apiRoutes);
-
-app.listen(Config.port, () => {
-  logger.info("buyer-service running on port " + Config.port);
-});
+const app = express()
+app.use(express.json())
+app.use("/buyer", buyerRoutes)
+app.get("/health", (_, res) => res.send("OK"))
+export default app

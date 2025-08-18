@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { api } from "@/services/api-client";
 import type { Product } from "@/types/marketplace";
+import { useAuthStore } from "@/store/auth.store";
+
 
 interface BuyerProFeaturesProps {
   /** Initial search query for advanced search */
@@ -16,26 +18,29 @@ export default function BuyerProFeatures({
   limit = 20,
 }: BuyerProFeaturesProps) {
   const [products, setProducts] = useState<Product[]>([]);
+  const [matchedProducts, setMatchedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [matchLoading, setMatchLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [error, setError] = useState<string | null>(null);
   const [prioritySupportContact, setPrioritySupportContact] = useState<string | null>(null);
 
-  // Load initial products on mount
+  // Load initial products on mount if initialQuery is provided
   useEffect(() => {
     if (initialQuery) {
       handleSearch(initialQuery);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Handle advanced product search
   const handleSearch = async (query: string) => {
     setLoading(true);
     setError(null);
     try {
       const res = await api.marketplace.searchProducts(query, {
         limit,
-        advancedFilters: true, // backend flag for advanced pro filter
+        advancedFilters: true,
       });
       if (res.success && res.data) {
         setProducts(res.data);
@@ -49,9 +54,23 @@ export default function BuyerProFeatures({
     }
   };
 
+  // Fetch matchmaking based product recommendations for this buyer (pro user)
+  useEffect(() => {
+    setMatchLoading(true);
+    // Replace 'currentUserId' with actual logged in buyer ID from auth context
+    api.matchmaking
+      .getMatchesForMsme("currentUserId")
+      .then((res) => {
+        if (res.success && res.data) {
+          setMatchedProducts(res.data);
+        }
+      })
+      .finally(() => setMatchLoading(false));
+  }, []);
+
+  // Messaging API call
   const sendUnlimitedMessage = async (sellerId: string) => {
     try {
-      // Example: Placeholder messaging API call
       const res = await api.messaging.sendMessage(
         `seller-${sellerId}`,
         "Hello, I am interested in your listing."
@@ -64,9 +83,9 @@ export default function BuyerProFeatures({
     }
   };
 
+  // Fetch priority support contact for pro users
   const fetchPrioritySupport = async () => {
     try {
-      // Example: Imagine API returns support ticket/contact for pro user
       const res = await api.user.getProfile();
       if (res.success && res.data?.prioritySupportContact) {
         setPrioritySupportContact(res.data.prioritySupportContact);
@@ -86,7 +105,33 @@ export default function BuyerProFeatures({
     <div className="space-y-6 border rounded-lg p-5 bg-white shadow">
       <h2 className="text-xl font-bold">Pro-Only Features</h2>
 
-      {/* Advanced Search */}
+      {/* Matchmaking-based product recommendations */}
+      <div className="space-y-2">
+        <h3 className="font-semibold">Matched Opportunities</h3>
+        {matchLoading && <p>Loading matched opportunities...</p>}
+        {!matchLoading && matchedProducts.length === 0 && (
+          <p>No matched opportunities available.</p>
+        )}
+        {!matchLoading && matchedProducts.length > 0 && (
+          <ul className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+            {matchedProducts.map((p) => (
+              <li key={p.id} className="border p-3 rounded shadow-sm">
+                <h4 className="font-semibold">{p.name}</h4>
+                <p className="text-sm text-gray-600">{p.description}</p>
+                <p className="text-sm font-medium">₹{p.price}</p>
+                <button
+                  onClick={() => sendUnlimitedMessage(p.ownerId || "")}
+                  className="mt-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Message Seller (Unlimited)
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Advanced Search Section */}
       <div className="space-y-2">
         <h3 className="font-semibold">Advanced Search</h3>
         <div className="flex gap-2">
@@ -126,7 +171,7 @@ export default function BuyerProFeatures({
         )}
       </div>
 
-      {/* Priority Support */}
+      {/* Priority Support Section */}
       <div>
         <h3 className="font-semibold">Priority Support</h3>
         {prioritySupportContact ? (

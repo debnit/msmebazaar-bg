@@ -1,1 +1,55 @@
-../../../shared/db/schema.prisma
+model UserProfile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  name          String
+  email         String   @unique
+  phone         String?
+  businessName  String?
+  bio           String?
+  proSince      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  // Relations:
+  profileViews  ProfileView[]
+  inquiries     Inquiry[]
+  orders        Order[]
+  activities    UserActivity[]
+}
+
+model ProfileView {
+  id        String   @id @default(uuid())
+  userId    String
+  viewedAt  DateTime @default(now())
+  // If you track who viewed, add viewerId String?
+  // Relations
+  user      UserProfile @relation(fields: [userId], references: [userId])
+}
+
+model Inquiry {
+  id            String   @id @default(uuid())
+  userId        String
+  status        String   // e.g. "open", "pending", "rejected", etc.
+  createdAt     DateTime @default(now())
+  // Track response time in minutes (nullable for unanswered)
+  responseTimeMinutes Int?
+  // Relation
+  user    UserProfile @relation(fields: [userId], references: [userId])
+  order   Order?      @relation(fields: [orderId], references: [id])
+  orderId String?
+}
+
+model Order {
+  id        String   @id @default(uuid())
+  userId    String
+  status    String   // e.g. "completed", "canceled"
+  createdAt DateTime @default(now())
+  user      UserProfile @relation(fields: [userId], references: [userId])
+}
+
+model UserActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  activity  String   // e.g. "login", "profile_update", etc.
+  timestamp DateTime @default(now())
+  user      UserProfile @relation(fields: [userId], references: [userId])
+}

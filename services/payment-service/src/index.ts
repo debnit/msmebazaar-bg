@@ -2,7 +2,7 @@ import express from "express";
 import { Config } from "./config/env";
 import { logger } from "./utils/logger";
 import cors from "cors";
-
+import paymentRoutes from "./routes/payment.routes";
 // import your routes here, e.g.:
 // import apiRoutes from "./routes/api.routes";
 
@@ -15,3 +15,8 @@ app.use(cors());
 app.listen(Config.port, () => {
   logger.info("payment-service running on port " + Config.port);
 });
+
+
+app.use("/payments", paymentRoutes);
+export default app;
+
