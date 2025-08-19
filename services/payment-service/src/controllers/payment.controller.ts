@@ -1,27 +1,56 @@
 import { Request, Response } from "express";
-import { createPaymentSchema, updatePaymentStatusSchema } from "../validation/payment.schema";
+import crypto from "crypto";
 import * as paymentService from "../services/payment.service";
-import { Feature } from "../../../shared/config/featureFlagTypes";
-import { requireFeature } from "../middlewares/featureGating";
 import { getUserIdFromReq } from "../utils/helpers";
+import { env } from "../config/env";
 
-export async function createPaymentController(req: Request, res: Response) {
+
+export async function createRazorpayOrderController(req: Request, res: Response) {
   const userId = getUserIdFromReq(req);
+  const { amount } = req.body;
 
-  const parsed = createPaymentSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Invalid request data", details: parsed.error.flatten() });
+  if (!amount || typeof amount !== "number" || amount <= 0) {
+    return res.status(400).json({ error: "Invalid amount" });
+  }
 
-  // Feature check handled via middleware, optionally check here again
-  const payment = await paymentService.createPayment(userId, parsed.data);
-  res.status(201).json(payment);
+  try {
+    const { order, paymentRecord } = await paymentService.createRazorpayOrder(userId, amount * 100); // convert to paise
+    res.status(201).json({ order, paymentRecord });
+  } catch (error) {
+    console.error("Error creating Razorpay order", error);
+    res.status(500).json({ error: "Could not create payment order" });
+  }
 }
+const validateRazorpayWebhook = (req: Request) => {
+  const secret = env.RAZORPAY_KEY_SECRET;
+  const shasum = crypto.createHmac("sha256", secret);
+  const body = JSON.stringify(req.body);
+  shasum.update(body);
+  const digest = shasum.digest("hex");
+  return digest === req.headers["x-razorpay-signature"];
+};
 
-export async function updatePaymentStatusController(req: Request, res: Response) {
-  const { paymentId } = req.params;
+export async function razorpayWebhookController(req: Request, res: Response) {
+  if (!validateRazorpayWebhook(req)) {
+    return res.status(400).json({ error: "Invalid signature" });
+  }
 
-  const parsed = updatePaymentStatusSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "Invalid request data", details: parsed.error.flatten() });
+  const event = req.body.event;
+  const payload = req.body.payload;
 
-  const payment = await paymentService.updatePaymentStatus(paymentId, parsed.data.status, parsed.data.gatewayRef);
-  res.json(payment);
+  if (event === "payment.captured") {
+    const paymentEntity = payload.payment.entity;
+    
+    // Update payment status as captured/paid
+    await paymentService.updatePaymentStatus(
+      paymentEntity.order_id,
+      "completed",
+      paymentEntity.id
+    );
+
+    return res.status(200).json({ status: "ok" });
+  }
+
+  // Handle other events as needed
+  return res.status(200).json({ status: "ignored" });
 }

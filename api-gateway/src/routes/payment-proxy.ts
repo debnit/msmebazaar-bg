@@ -1,8 +1,10 @@
 // api-gateway/src/routes/payment-proxy.ts
 import { Router } from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
-import { requireAuth, requireFeature } from "../middlewares/auth";
-import { Feature } from "../../shared/config/featureFlagTypes";
+import { requireAuth } from "../middlewares/auth";
+import { requireFeature } from "../middlewares/requireFeature";
+
+import { Feature } from "../../../shared/config/featureFlagTypes";
 
 const router = Router();
 
@@ -17,5 +19,15 @@ router.use(
     pathRewrite: { "^/payments": "" },
   })
 );
+// Razorpay webhook endpoint - no auth required for external webhook calls
+router.use(
+  "/razorpay/webhook",
+  createProxyMiddleware({
+    target: process.env.PAYMENT_SERVICE_URL || "http://localhost:4004",
+    changeOrigin: true,
+    pathRewrite: { "^/razorpay/webhook": "/razorpay/webhook" },
+  })
+);
+
 
 export default router;

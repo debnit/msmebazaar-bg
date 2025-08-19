@@ -48,7 +48,7 @@ class ApiClient {
   private authToken: string | null = null;
   constructor(config: ApiClientConfig = {}) {
     this.config = {
-      baseURL: config.baseURL || process.env.NEXT_PUBLIC_API_URL || "",
+      baseURL: config.baseURL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001",
       timeout: config.timeout || 30000,
       retries: config.retries || 3,
       retryDelay: config.retryDelay || 1000,

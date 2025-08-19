@@ -4,5 +4,5 @@ dotenv.config();
 export const Config = {
   port: process.env.SERVICE_PORT || 8000,
   jwtSecret: process.env.JWT_SECRET || "changeme",
-  dbUrl: process.env.DATABASE_URL!
+  dbUrl: process.env.DATABASE_URL || http://localhost:6579
 };

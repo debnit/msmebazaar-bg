@@ -1,13 +1,29 @@
+import Razorpay from "razorpay";
+import { env } from "../config/env";
 import * as paymentRepo from "../repositories/payment.repository";
 
-export async function createPayment(userId: string, data: any) {
-  return paymentRepo.createPayment({
-    userId,
-    ...data,
-    status: "initiated",
-  });
-}
+const razorpayClient = new Razorpay({
+  key_id: env.RAZORPAY_KEY_ID,
+  key_secret: env.RAZORPAY_KEY_SECRET,
+});
 
-export async function updatePaymentStatus(paymentId: string, status: string, gatewayRef?: string) {
-  return paymentRepo.updatePaymentStatus(paymentId, status, gatewayRef);
+export async function createRazorpayOrder(userId: string, amountInPaise: number, currency = "INR", receipt?: string) {
+  const options = {
+    amount: amountInPaise, // in paise
+    currency,
+    receipt,
+    payment_capture: 1,
+  };
+
+  const order = await razorpayClient.orders.create(options);
+
+  const paymentRecord = await paymentRepo.createPayment({
+    userId,
+    amount: amountInPaise / 100,
+    currency,
+    status: "created",
+    razorpayOrderId: order.id,
+  });
+
+  return { order, paymentRecord };
 }

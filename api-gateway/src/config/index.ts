@@ -3,7 +3,7 @@ import { env } from "./env";
 import { servicesConfig } from "./services";
 
 export const Config = {
-  port: env.PORT,
+  port: env.PORT = 6000,
   jwtSecret: env.JWT_SECRET,
   frontendUrl: env.FRONTEND_URL,
   nodeEnv: env.NODE_ENV,

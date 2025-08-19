@@ -4,7 +4,7 @@
  */
 import React, { ReactNode } from "react";
 import ThemeProvider from "../theme-provider";
-import ErrorBoundary from "../common/ErrorBoundary";
+import ErrorBoundary from "../error-boundary";
 import Loader from "../common/Loader";
 import Navbar from "../navbar/navbar";
 

@@ -1,13 +1,13 @@
 model Payment {
-  id           String    @id @default(uuid())
-  userId       String
-  orderId      String?
-  amount       Float
-  currency     String    @default("INR")
-  status       String    @default("initiated")  // initiated, pending, completed, failed, refunded, cancelled
-  gatewayRef   String?   
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                String   @id @default(cuid())
+  userId            String
+  amount            Float
+  currency          String
+  status            String
+  razorpayOrderId   String?  @unique
+  gatewayRef        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model Refund {
