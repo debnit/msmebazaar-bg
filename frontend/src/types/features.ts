@@ -1,14 +1,40 @@
 // Feature and access control types for MSMEBazaar
 
 export enum UserRole {
-  FREE_USER = "free_user",
-  PRO_USER = "pro_user",
-  BUSINESS_OWNER = "business_owner",
-  VENDOR = "vendor",
+  MSME_OWNER = "msmeOwner",
   BUYER = "buyer",
+  SELLER = "seller",
+  INVESTOR = "investor",
+  AGENT = "agent",
+  FOUNDER = "founder",
   ADMIN = "admin",
-  SUPER_ADMIN = "super_admin",
+  SUPER_ADMIN = "superAdmin"
+  // add other roles as needed
 }
+
+export enum Feature {
+  BUSINESS_LOANS = "business-loans",
+  BUSINESS_VALUATION = "business-valuation",
+  EXIT_STRATEGY = "exit-strategy",
+  MARKET_LINKAGE = "market-linkage",
+  MSME_NETWORKING = "msme-networking",
+  COMPLIANCE = "compliance",
+  PLANT_MACHINERY = "plant-machinery-installation",
+  LEADERSHIP_TRAINING = "leadership-training",
+
+  ADVANCED_ANALYTICS = "advanced-analytics",
+  PRIORITY_SUPPORT = "priority-support",
+  CUSTOM_REPORTS = "custom-reports",
+  API_ACCESS = "api-access",
+  WHITE_LABEL = "white-label",
+
+  AGENT_DASHBOARD = "agent-dashboard",
+  INVESTOR_PORTAL = "investor-portal",
+  ADMIN_PANEL = "admin-panel",
+  SUPER_ADMIN_PANEL = "super-admin-panel"
+  // add other features as needed
+}
+
 
 export enum FeatureType {
   CORE = "core",
@@ -318,4 +344,12 @@ export interface FeatureAdminAction {
   timestamp: Date
   changes?: Record<string, any>
   reason?: string
+}
+
+export enum FeatureKey {
+  BUSINESS_LOANS = "BUSINESS_LOANS",
+  BUSINESS_VALUATION = "BUSINESS_VALUATION",
+  MARKET_LINKAGE = "MARKET_LINKAGE",
+  NETWORKING = "NETWORKING",
+  // ...other feature keys
 }

@@ -276,5 +276,10 @@ export const useRoles = () => {
     unassignRole,
   }
 }
+export function isUserRole(role: any): role is UserRole {
+  return Object.values(useRoles).includes(role as UserRole);
+}
+// Use: if (isUserRole(someString)) { ... }
+
 
 export default useRoles

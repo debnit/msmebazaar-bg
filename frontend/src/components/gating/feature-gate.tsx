@@ -2,8 +2,8 @@
 
 import type React from "react"
 import { useAuth } from "@/hooks/use-auth"
-import { usePro } from "@/hooks/use-pro"
-import { Feature, type UserRole, AccessLevel } from "@/types/feature"
+import { usePro } from "@/hooks/use-Pro"
+import { Feature, type UserRole, AccessLevel } from "../../types/features"
 import { hasFeatureAccess, getFeatureAccessReason } from "@/utils/feature-gate"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"

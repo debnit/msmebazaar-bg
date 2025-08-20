@@ -3,7 +3,7 @@
  * components/navbar/navbar-links.tsx
  * Centralized navbar links and roles-aware link builder
  */
-import { FeatureKey } from "../../types/feature";
+import { FeatureKey } from "../../types/features";
 
 export interface NavLink {
   label: string;
@@ -19,6 +19,6 @@ export const NAV_LINKS: NavLink[] = [
   { label: "Business Loans", href: "/business-loans", featureKey: FeatureKey.BUSINESS_LOANS },
   { label: "Valuation", href: "/valuation", featureKey: FeatureKey.BUSINESS_VALUATION },
   { label: "Market Linkage", href: "/market-linkage", featureKey: FeatureKey.MARKET_LINKAGE },
-  { label: "Networking", href: "/networking", href: "/msme-networking" },
+  { label: "Networking", href: "/networking", featureKey: FeatureKey.NETWORKING },
 ];
 export default NAV_LINKS;
