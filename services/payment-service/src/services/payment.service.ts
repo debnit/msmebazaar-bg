@@ -27,3 +27,7 @@ export async function createRazorpayOrder(userId: string, amountInPaise: number,
 
   return { order, paymentRecord };
 }
+
+export async function updatePaymentStatus(_order_id: any, _arg1: string, _id: any) {
+  throw new Error("Function not implemented.");
+}

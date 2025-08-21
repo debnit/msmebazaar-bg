@@ -3,14 +3,26 @@
     "target": "ES2020",
     "module": "CommonJS",
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "../",                     
+    "baseUrl": "./",                      
+    "paths": {                           
+      "@shared/*": ["../shared/*"],       
+      "@utils/*": ["../shared/utils/*"]   
+    },
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "resolveJsonModule": true
   },
-  "include": ["src/**/*.ts",
+  "include": [
+    "src/**/*.ts",
+    "../shared/**/*.ts",
     "src/types/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
   ]
 }

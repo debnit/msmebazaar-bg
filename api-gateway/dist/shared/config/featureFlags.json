@@ -1,0 +1,80 @@
+{
+    "ADVANCED_ANALYTICS": {
+        "label": "Advanced Analytics",
+        "description": "Detailed business insights & performance metrics.",
+        "enabled": true,
+        "proOnly": true,
+        "rolesEnabled": ["admin", "seller"],
+        "accessLevel": "READ",
+        "rolloutPercentage": 100
+    },
+    "AI_BUSINESS_VALUATION": {
+        "label": "AI Business Valuation",
+        "description": "Machine learning model estimating business valuation.",
+        "enabled": true,
+        "proOnly": true,
+        "rolesEnabled": ["msmeOwner", "investor"],
+        "accessLevel": "WRITE",
+        "rolloutPercentage": 100
+    },
+    "RECOMMENDATIONS": {
+        "label": "Personalized Recommendations",
+        "description": "ML-based content and product recommendations.",
+        "enabled": true,
+        "rolesEnabled": ["buyer", "seller"],
+        "accessLevel": "READ",
+        "rolloutPercentage": 80
+    },
+    "MATCHMAKING": {
+        "label": "Smart Matchmaking",
+        "description": "AI-powered matchmaking between buyers and sellers.",
+        "enabled": true,
+        "rolesEnabled": ["buyer", "seller"],
+        "accessLevel": "READ",
+        "rolloutPercentage": 100
+    },
+    "LOAN_CTA": {
+        "label": "Loan CTA",
+        "description": "Quick access to loan offers based on eligibility.",
+        "enabled": true,
+        "rolesEnabled": ["msmeOwner"],
+        "accessLevel": "READ",
+        "rolloutPercentage": 100
+    },
+    "CUSTOM_REPORTS": {
+        "label": "Custom Reports",
+        "description": "Create and schedule tailor‑made business reports.",
+        "enabled": true,
+        "proOnly": true,
+        "rolesEnabled": ["admin"],
+        "accessLevel": "WRITE",
+        "rolloutPercentage": 50
+    },
+    "PRIORITY_SUPPORT": {
+        "label": "Priority Support",
+        "description": "Faster support SLA for premium members.",
+        "enabled": true,
+        "proOnly": true,
+        "rolesEnabled": ["buyer", "seller", "admin"],
+        "accessLevel": "READ",
+        "rolloutPercentage": 100
+    },
+    "BULK_OPERATIONS": {
+        "label": "Bulk Operations",
+        "description": "Modify products, orders, and records in bulk.",
+        "enabled": true,
+        "proOnly": true,
+        "rolesEnabled": ["seller"],
+        "accessLevel": "WRITE",
+        "rolloutPercentage": 30
+    },
+    "API_ACCESS": {
+        "label": "API Access",
+        "description": "Integrate MSMEBazaar with your systems via API.",
+        "enabled": true,
+        "proOnly": true,
+        "rolesEnabled": ["admin", "developer"],
+        "accessLevel": "READ",
+        "rolloutPercentage": 10
+    }
+}

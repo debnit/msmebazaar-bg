@@ -1,6 +1,5 @@
-// src/services/proxyFactory.ts
-
 import { createProxyMiddleware } from "http-proxy-middleware";
+import { Socket } from "net";
 import { IncomingMessage, ClientRequest, ServerResponse } from "http";
 import { createCircuitBreaker } from "./circuitBreaker";
 import { logger } from "../utils/logger";
@@ -12,6 +11,7 @@ export function createServiceProxy(serviceName: string, target: string) {
     pathRewrite: (path: string) => path.replace(new RegExp(`^/api/${serviceName}`), ""),
     on: {
       proxyReq: (proxyReq: ClientRequest, req: IncomingMessage, _res: ServerResponse) => {
+        // Forward request ID header if present
         if ((req as any).id) {
           proxyReq.setHeader("X-Request-ID", (req as any).id);
         }
@@ -19,7 +19,7 @@ export function createServiceProxy(serviceName: string, target: string) {
       error: (
         err: Error,
         req: IncomingMessage,
-        res: ServerResponse & { writeHead?: any }
+        res: ServerResponse & { writeHead?: any } | Socket
       ) => {
         logger.error({
           msg: "Proxy error",
@@ -27,7 +27,9 @@ export function createServiceProxy(serviceName: string, target: string) {
           error: err.message,
           requestId: (req as any).id,
         });
-        if (typeof res.end === "function") {
+
+        // Ensure res is ServerResponse before sending response
+        if ('statusCode' in res && typeof res.end === "function") {
           res.statusCode = 502;
           res.end(
             JSON.stringify({
@@ -41,9 +43,10 @@ export function createServiceProxy(serviceName: string, target: string) {
     },
   });
 
-  return createCircuitBreaker((req: IncomingMessage, res: ServerResponse) =>
-    new Promise<void>((resolve, reject) => {
-      proxy(req, res, (err?: Error) => (err ? reject(err) : resolve()));
-    })
+  return createCircuitBreaker(
+    (req: IncomingMessage, res: ServerResponse) =>
+      new Promise<void>((resolve, reject) => {
+        proxy(req, res, (err?: Error) => (err ? reject(err) : resolve()));
+      })
   );
 }

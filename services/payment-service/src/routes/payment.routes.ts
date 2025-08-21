@@ -17,3 +17,6 @@ router.post(
   express.raw({ type: "application/json" }), // razorpay requires raw body
   razorpayWebhookController
 );
+
+// In payment.routes.ts
+export default router;

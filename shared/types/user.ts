@@ -1,11 +1,12 @@
 // /shared/types/user.ts
 import { UserRole } from "./feature";
 
-export interface User {
+export interface SessionUser{
   id: string;
   email: string;
   name: string;
-  isPro: boolean;
+  isPro?: boolean;
+  onboardedProAt?: string;
   roles: UserRole[];
   createdAt: string;
   updatedAt: string;
@@ -41,5 +42,8 @@ export interface RegisterRequest {
 }
 
 export interface AuthenticatedRequest extends Express.Request {
-  user?: User;
+  session?: any;  // Make optional to match Express behavior
+  user?: SessionUser;
 }
+
+export { UserRole };

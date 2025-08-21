@@ -7,7 +7,7 @@ import { requireFeature } from "../middlewares/requireFeature";
 import { createServiceProxy } from "../services/proxyFactory";
 import { servicesConfig } from "../config/services";
 import { featureServiceMap } from "../config/featureServiceMap";
-import { Feature } from "../../../../shared/config/FeatureFlagTypes";
+import { Feature } from "@shared/config/featureFlagTypes";
 
 const router = Router();
 
@@ -40,7 +40,8 @@ function createServiceProxyRoute(
     ...(serviceConfig.requiresAuth ? [requireAuth] : []),
     createFeatureGate(serviceName),
     (req, res, next) => {
-      proxyBreaker.fire(req, res).catch(next);
+      proxyBreaker(req, res).catch(next);
+
     }
   ];
 

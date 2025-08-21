@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import * as paymentService from "../services/payment.service";
-import { getUserIdFromReq } from "../utils/helpers";
+import { getUserIdFromReq } from "../utils/helper";
 import { env } from "../config/env";
 
 

@@ -1,5 +1,5 @@
   // api-gateway/src/config/featureServiceMap.ts
-  import { Feature } from "../../../../shared/config/FeatureFlagTypes";
+  import { Feature } from "@shared/config/featureFlagTypes";
 
   export const featureServiceMap: Record<string, Feature> = {
     /* -------- Authentication (no feature gating, public) -------- */
@@ -57,11 +57,10 @@
     "eaasservice/programs": Feature.EXIT_STRATEGY,
 
     /* -------- Market Linkage / Matchmaking -------- */
-    "matchmaking": Feature.MARKET_LINKAGE,
-    "recommendationservice": Feature.MARKET_LINKAGE,
-    "searchmatchmakingservice": Feature.MARKET_LINKAGE,
-    "sellerservice": Feature.MARKET_LINKAGE,
-    "msmelistingservice": Feature.MARKET_LINKAGE,
+    "matchmaking": Feature.MATCHMAKING,
+    "recommendationservice": Feature.RECOMMENDATIONS,
+    "searchmatchmakingservice": Feature.SEARCHMATCHMAKING,
+    
 
     /* -------- CRM -------- */
     "crm/pipeline": Feature.CRM_PIPELINE,

@@ -1,5 +1,6 @@
 // api-gateway/src/utils/logger.ts
 import pino from "pino";
+import { Request, Response, NextFunction } from "express";
 
 export const logger = pino({
   level: process.env.LOG_LEVEL || "info",
@@ -8,7 +9,8 @@ export const logger = pino({
 });
 
 /** Middleware for timing request/response */
-export function logRequests(req, res, next) {
+export function logRequests(req: Request, res: Response, next: NextFunction) {
+
   const start = Date.now();
   res.on("finish", () => {
     const duration = Date.now() - start;

@@ -1,3 +1,4 @@
+import { UserRole } from "@shared/types";
 import { Feature, FeatureMeta } from "../../../shared/config/featureFlagTypes";
 import featureFlags from "../../../shared/config/featureFlags.json";
 
@@ -9,7 +10,7 @@ export const canUserAccessFeature = (
   if (!f?.enabled) return false;
 
   // Pro-only check: either must be pro or have a role enabled explicitly
-  if (f.proOnly && !ctx.isPro && !(f.rolesEnabled?.includes(ctx.role) ?? false)) {
+  if (f.proOnly && !ctx.isPro && !(f.rolesEnabled?.includes(ctx.role as UserRole) ?? false)) {
     return false;
   }
 

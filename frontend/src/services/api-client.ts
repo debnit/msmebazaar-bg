@@ -244,10 +244,8 @@ export const api = {
     logUserEvent: (event: any) => apiClient.post("/recommendations/events", event),
   },
   matchmaking: {
-    // Expose the function exported above
     getMatchesForMsme: matchmakingApi.getMatchesForMsme,
-    // add other matchmaking endpoints as needed
   },
 };
 
-export type { ApiResponse, ApiClientConfig };
+//export type { ApiResponse, ApiClientConfig };

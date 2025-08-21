@@ -3,7 +3,7 @@
 import { Request, Response, NextFunction } from "express";
 import { Feature } from "../../../shared/config/featureFlagTypes";
 import { canUserAccessFeature } from "../utils/featureAccess";
-import { SessionUser } from "../../../shared/auth";
+import { SessionUser } from "@shared/types/user";
 
 /**
  * Middleware factory to enforce access to a specific feature.
