@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "MSMEBazaar",
+    "slug": "msme-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icons/adaptive-icon.png",
+    "splash": {
+      "image": "./assets/icons/adaptive-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icons/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "ios": {
+      "icon": "./assets/icons/adaptive-icon.png",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.msmeapp"
+    },
+    "web": {
+      "favicon": "./assets/icons/adaptive-icon.png"
+    }
+  }
+}
