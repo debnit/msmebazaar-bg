@@ -1,9 +1,16 @@
 // ENHANCED PRODUCTION CONTROLLER
-import { Response } from "express";
-import { AuthenticatedRequest } from "../middlewares/auth";
+import { Request, Response } from "express";
 import { PaymentService } from "../services/payment.service";
 import { logger } from "../utils/logger";
 import { ValidationError, NotFoundError } from "../utils/errors";
+import razorpayClient from "../services/razorpayClient";
+import { env } from "../config/env";
+import { PaymentStatus } from "@prisma/client";
+import { RefundRepository } from "../repositories/refund.repository"; 
+
+// Use extended Express.Request with req.user from global typings
+type AuthenticatedRequest = Request & { user?: { id: string; roles: string[]; isPro?: boolean } };
+
 
 export class PaymentController {
   static async createRazorpayOrder(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -15,9 +22,10 @@ export class PaymentController {
         userId,
         orderId,
         amount,
+        currency:
         description,
-        metadata,
         ipAddress: req.ip,
+        metadata,
         userAgent: req.get('User-Agent'),
       });
 
@@ -81,11 +89,12 @@ export class PaymentController {
 
       if (!signature) {
         logger.warn('Webhook received without signature', { ip: req.ip });
-           res.status(400).json({ error: 'Missing signature' });
+        res.status(400).json({ error: 'Missing signature' });
+        return;
       }
 
       // Validate signature
-      const isValid = razorpayClient.utils.verifyWebhookSignature(
+      const isValid =(razorpayClient as any).razorpayClient.utils.verifyWebhookSignature(
         JSON.stringify(body),
         signature,
         env.razorpay.webhookSecret
@@ -96,7 +105,8 @@ export class PaymentController {
           ip: req.ip,
           signature: signature.slice(0, 20) + '...', // Log partial signature for debugging
         });
-           res.status(400).json({ error: 'Invalid signature' });
+        res.status(400).json({ error: 'Invalid signature' });
+        return;
       }
 
       const event = body.event;
@@ -105,37 +115,110 @@ export class PaymentController {
       logger.info('Webhook received', { event, entity: payload?.payment?.entity?.id });
 
       switch (event) {
-        case 'payment.captured':
-          await PaymentController.handlePaymentCaptured(payload);
+        case "payment.captured":
+          if (PaymentController.handlePaymentCaptured)
+            await PaymentController.handlePaymentCaptured(payload);
           break;
-        case 'payment.failed':
-          await PaymentController.handlePaymentFailed(payload);
+        case "payment.failed":
+          if (PaymentController.handlePaymentFailed)
+            await PaymentController.handlePaymentFailed(payload);
           break;
-        case 'refund.processed':
-          await PaymentController.handleRefundProcessed(payload);
+        case "refund.processed":
+          if (PaymentController.handleRefundProcessed)
+            await PaymentController.handleRefundProcessed(payload);
           break;
         default:
-          logger.info('Unhandled webhook event', { event });
+          logger.info("Unhandled webhook event", { event });
       }
 
+
       res.status(200).json({ status: 'ok' });
-    } catch (error) {
-      logger.error('Webhook processing failed', {
-        error: error.message,
-        event: req.body?.event,
+    } catch (error: unknown) {
+      const err = error as Error;
+      logger.error("Webhook processing failed", {
+        error: err.message,
+        event: (req.body as any)?.event,
       });
-      res.status(500).json({ error: 'Webhook processing failed' });
+      res.status(500).json({ error: "Webhook processing failed" });
     }
+
   }
 
   private static async handlePaymentCaptured(payload: any): Promise<void> {
-    const paymentEntity = payload.payment.entity;
+    const paymentEntity = payload.payment?.entity;
+    if (!paymentEntity) {
+      logger.warn("Webhook payload missing payment entity");
+      return;
+    }
     await PaymentService.updatePaymentStatus(
       paymentEntity.order_id,
       PaymentStatus.COMPLETED,
       paymentEntity.id
     );
   }
+  private static async handlePaymentFailed(payload: any): Promise<void> {
+    try {
+      const paymentEntity = payload.payment?.entity;
+      if (!paymentEntity) {
+        logger.warn("handlePaymentFailed: Missing payment entity in payload");
+        return;
+      }
+
+      // Mark payment as FAILED with Razorpay payment ID and failure reason
+      await PaymentService.updatePaymentStatus(
+        paymentEntity.order_id,
+        PaymentStatus.FAILED,
+        paymentEntity.id,
+       // paymentEntity.error_reason || "Payment failed at gateway"
+      );
+
+      logger.info("Payment marked as failed", {
+        orderId: paymentEntity.order_id,
+        razorpayPaymentId: paymentEntity.id,
+        failureReason: paymentEntity.error_reason,
+      });
+
+      // Optionally, notify user or trigger compensating transaction
+
+    } catch (error) {
+      logger.error("handlePaymentFailed: Error processing payment failure", {
+        error: (error as Error).message,
+        payload,
+      });
+      throw error;
+    }
+  }
+  private static async handleRefundProcessed(payload: any): Promise<void> {
+    try {
+      const refundEntity = payload.refund?.entity;
+      if (!refundEntity) {
+        logger.warn("handleRefundProcessed: Missing refund entity in payload");
+        return;
+      }
+
+      // Update refund status in DB
+      await RefundRepository.updateStatus(
+        refundEntity.id,
+        refundEntity.status.toUpperCase() as RefundStatus // Maps to RefundStatus enum
+      );
+
+      logger.info("Refund processed", {
+        refundId: refundEntity.id,
+        status: refundEntity.status,
+        amount: refundEntity.amount,
+      });
+
+      // Optionally, notify user, update payment/refund summary
+
+    } catch (error) {
+      logger.error("handleRefundProcessed: Error processing refund", {
+        error: (error as Error).message,
+        payload,
+      });
+      throw error;
+    }
+  }
+
 
   private static handleError(error: any, res: Response, operation: string): void {
     logger.error(`${operation} failed`, {
@@ -166,3 +249,4 @@ export class PaymentController {
     });
   }
 }
+

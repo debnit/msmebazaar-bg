@@ -1,4 +1,5 @@
-import { z } from "zod";
+import { Request, Response, NextFunction } from "express";
+import { z, ZodSchema } from "zod";
 
 // Reuse enums as needed
 export const CurrencyEnum = z.enum(["INR", "USD", "EUR"]);
@@ -34,3 +35,68 @@ export const UpdatePaymentStatusSchema = z.object({
   status: PaymentStatusEnum,
   gatewayPaymentId: z.string().optional(),
 });
+
+const initiateRefundSchema = z.object({
+  paymentId: z.string().cuid(),
+  amount: z.number().min(1),
+  reason: z.string().optional(),
+});
+
+const getRefundStatusSchema = z.object({
+  refundId: z.string().cuid(),
+});
+
+const getTransactionsSchema = z.object({
+  userId: z.string().optional(),
+  fromDate: z.preprocess((arg) => (typeof arg === "string" ? new Date(arg) : arg), z.date().optional()),
+  toDate: z.preprocess((arg) => (typeof arg === "string" ? new Date(arg) : arg), z.date().optional()),
+});
+
+const getAnalyticsSchema = z.object({});
+
+const schemas: Record<string, ZodSchema> = {
+  createOrder: CreateOrderRequestSchema,
+  verifyPayment: VerifyPaymentSchema,
+  getPaymentStatus: UpdatePaymentStatusSchema,
+  initiateRefund: initiateRefundSchema,
+  getRefundStatus: getRefundStatusSchema,
+  getTransactions: getTransactionsSchema,
+  getAnalytics: getAnalyticsSchema,
+};
+
+/**
+ * Middleware factory to validate request body or params with given Zod schema
+ */
+export function validateRequest(schemaKey: string) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const schema = schemas[schemaKey];
+    if (!schema) {
+      return next(new Error(`No validation schema found for key: ${schemaKey}`));
+    }
+
+    // Validate GET requests on params, else body
+    const dataToValidate = req.method === "GET" ? req.params : req.body;
+
+    const result = schema.safeParse(dataToValidate);
+
+    if (!result.success) {
+      const errors = result.error.errors.map((err) => `${err.path.join(".")}: ${err.message}`).join(", ");
+        res.status(400).json({
+        success: false,
+        error: "Validation error",
+        message: errors,
+        code: "VALIDATION_ERROR",
+      });
+      return;
+    }
+
+    // Replace request data with parsed data
+    if (req.method === "GET") {
+      req.params = result.data;
+    } else {
+      req.body = result.data;
+    }
+
+    next();
+  };
+}

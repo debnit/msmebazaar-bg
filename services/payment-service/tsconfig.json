@@ -1,14 +1,14 @@
 {
   "compilerOptions": {
+    "composite": true,
     /* Output to dist */
     "outDir": "./dist",
     "rootDir": "./",
     "baseUrl": "./",
     "paths": {
-      "@shared/*": ["../../shared/*"]
-    }
-    /* Module + target for Node.js v18+ */
-    "target": "ES2021",
+      "@shared/*": ["../../shared/dist/*"]
+    },
+    "target": "ES2021", /* Module + target for Node.js v18+ */
     "module": "CommonJS",
     "moduleResolution": "Node",
     "lib": ["ES2021"],
@@ -41,6 +41,10 @@
     /* Avoid compile errors with TS tooling */
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts","../../shared/**/*"],
-  "exclude": ["node_modules", "dist", "src/tests"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/tests"],
+  "references": [
+    { "path": "../../shared" }
+  ],
+  
 }

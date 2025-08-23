@@ -1,15 +1,21 @@
-// CTO RECOMMENDATION - Production-grade service implementation
-import { Prisma } from "@prisma/client";
+// services/payment-service/src/services/payment.service.ts
+
+import { Currency, Payment, PaymentStatus, Prisma } from "@prisma/client";
 import { logger } from "../utils/logger";
-import { publishEvent } from "../kafka/producer";
+import { publishEvents } from "../kafka/producer";
+import prisma from "../db/prismaClient";
+import { ValidationError, ConflictError, InternalServerError } from "../utils/errors";
+import razorpayClient from "./razorpayClient";
 
 export interface CreateOrderRequest {
   userId: string;
   orderId?: string;
-  amount: number; // in rupees
+  amount: number;
   currency: Currency;
   description?: string;
   metadata?: Record<string, any>;
+  ipAddress?: string;
+  userAgent?: string;
 }
 
 export interface CreateOrderResponse {
@@ -23,13 +29,12 @@ export interface CreateOrderResponse {
 }
 
 export class PaymentService {
-  private static readonly MAX_AMOUNT = 500000; // ₹5 Lakh limit
-  private static readonly MIN_AMOUNT = 1; // ₹1 minimum
+  private static readonly MAX_AMOUNT = 500_000; // ₹5 Lakh limit
+  private static readonly MIN_AMOUNT = 1;       // ₹1 minimum
 
   static async createRazorpayOrder(request: CreateOrderRequest): Promise<CreateOrderResponse> {
-    const { userId, orderId, amount, currency = Currency.INR, description, metadata } = request;
+    const { userId, orderId, amount, currency = Currency.INR, metadata } = request;
 
-    // Input validation with business rules
     if (amount < this.MIN_AMOUNT || amount > this.MAX_AMOUNT) {
       throw new ValidationError(`Amount must be between ₹${this.MIN_AMOUNT} and ₹${this.MAX_AMOUNT}`);
     }
@@ -38,13 +43,14 @@ export class PaymentService {
     const amountInPaise = Math.round(amount * 100);
 
     try {
-      // Create database transaction for consistency
       const result = await prisma.$transaction(async (tx) => {
-        // Create payment record first
+        // Provide merchantId with valid value or "" if nullable in schema
         const paymentRecord = await tx.payment.create({
           data: {
             userId,
             orderId,
+            merchantId: "", // <-- Adjust if your schema requires a real value
+            method: "CARD", // <-- Default or real payment method
             amount: new Prisma.Decimal(amount),
             currency,
             status: PaymentStatus.PENDING,
@@ -54,25 +60,24 @@ export class PaymentService {
           },
         });
 
-        // Create Razorpay order
+        // Cast razorpayOptions to any if types don't align with your razorpay SDK version 
         const razorpayOptions = {
           amount: amountInPaise,
-          currency: currency,
+          currency,
           receipt,
-          payment_capture: 1, // Auto capture
+          payment_capture: 1,
           notes: {
             payment_id: paymentRecord.id,
             user_id: userId,
             order_id: orderId,
           },
-        };
+        } as any;
 
         const order = await razorpayClient.orders.create(razorpayOptions);
 
-        // Update payment record with Razorpay order ID
         const updatedPayment = await tx.payment.update({
           where: { id: paymentRecord.id },
-          data: { 
+          data: {
             razorpayOrderId: order.id,
             gatewayResponse: order as any,
           },
@@ -81,40 +86,52 @@ export class PaymentService {
         return { paymentRecord: updatedPayment, razorpayOrder: order };
       });
 
-      // Publish event for analytics and notifications
-      await publishEvent('payment.order.created', {
+      await publishEvents.orderCreated(
+        result.paymentRecord.id,
+        request.userId,
+        {
+          amount,
+          currency,
+          razorpayOrderId: result.razorpayOrder.id,
+        }
+      );
+
+      logger.info("Payment order created successfully", {
         paymentId: result.paymentRecord.id,
         userId,
         amount,
-        currency,
         razorpayOrderId: result.razorpayOrder.id,
       });
 
-      logger.info('Payment order created successfully', {
-        paymentId: result.paymentRecord.id,
-        userId,
-        amount,
-        razorpayOrderId: result.razorpayOrder.id,
-      });
+      return {
+        paymentRecord: result.paymentRecord,
+        razorpayOrder: {
+          id: result.razorpayOrder.id,
+          amount: result.razorpayOrder.amount,
+          currency: result.razorpayOrder.currency,
+          receipt: result.razorpayOrder.receipt,
+        }
+      };
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        logger.error("Failed to create payment order", {
+          userId,
+          amount,
+          message: error.message,
+          stack: error.stack,
+        });
 
-      return result;
-    } catch (error) {
-      logger.error('Failed to create payment order', {
-        userId,
-        amount,
-        error: error.message,
-        stack: error.stack,
-      });
-
-      if (error.code === 'P2002') {
-        throw new ConflictError('Duplicate payment order detected');
+        const anyErr = error as any;
+        if (anyErr.code === "P2002") {
+          throw new ConflictError("Duplicate payment order detected");
+        }
+        if (anyErr.error?.code === "BAD_REQUEST_ERROR") {
+          throw new ValidationError(`Razorpay error: ${anyErr.error.description}`);
+        }
+      } else {
+        logger.error("Unknown error during payment order creation", { userId, amount, error });
       }
-
-      if (error.error?.code === 'BAD_REQUEST_ERROR') {
-        throw new ValidationError(`Razorpay error: ${error.error.description}`);
-      }
-
-      throw new InternalServerError('Failed to create payment order');
+      throw new InternalServerError("Failed to create payment order");
     }
   }
 
@@ -124,18 +141,15 @@ export class PaymentService {
     razorpaySignature: string
   ): Promise<Payment> {
     try {
-      // Verify signature using Razorpay SDK
-      const isValid = razorpayClient.utils.verifyPaymentSignature({
+      // Cast razorpayClient as any to access utils if typings missing
+      const isValid = (razorpayClient as any).utils.verifyPaymentSignature({
         order_id: razorpayOrderId,
         payment_id: razorpayPaymentId,
         signature: razorpaySignature,
       });
 
-      if (!isValid) {
-        throw new ValidationError('Invalid payment signature');
-      }
+      if (!isValid) throw new ValidationError("Invalid payment signature");
 
-      // Update payment status
       const payment = await prisma.payment.update({
         where: { razorpayOrderId },
         data: {
@@ -149,21 +163,27 @@ export class PaymentService {
         },
       });
 
-      // Publish success event
-      await publishEvent('payment.completed', {
-        paymentId: payment.id,
-        userId: payment.userId,
-        amount: payment.amount.toNumber(),
-        razorpayPaymentId,
-      });
+      await publishEvents.paymentCompleted(
+        payment.id,
+        payment.userId,
+        {
+          amount: payment.amount.toNumber(),
+          razorpayPaymentId,
+        }
+      );
 
       return payment;
-    } catch (error) {
-      logger.error('Payment verification failed', {
-        razorpayOrderId,
-        razorpayPaymentId,
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        logger.error("Payment verification failed", {
+          razorpayOrderId,
+          razorpayPaymentId,
+          message: error.message,
+          stack: error.stack,
+        });
+      } else {
+        logger.error("Unknown error verifying payment", { razorpayOrderId, razorpayPaymentId, error });
+      }
       throw error;
     }
   }
@@ -174,41 +194,49 @@ export class PaymentService {
     gatewayPaymentId?: string
   ): Promise<Payment> {
     try {
-      const updateData: any = {
+      const existingPayment = await prisma.payment.findUnique({
+        where: { razorpayOrderId: orderId },
+      });
+
+      if (!existingPayment) {
+        throw new ValidationError(`Payment with orderId ${orderId} not found`);
+      }
+
+      const updateData: Partial<Payment> = {
         status,
         updatedAt: new Date(),
       };
 
-      if (status === PaymentStatus.COMPLETED) {
-        updateData.paidAt = new Date();
-      } else if (status === PaymentStatus.FAILED) {
-        updateData.failedAt = new Date();
-      }
-
-      if (gatewayPaymentId) {
-        updateData.razorpayPaymentId = gatewayPaymentId;
-      }
+      if (status === PaymentStatus.COMPLETED) updateData.paidAt = new Date();
+      if (status === PaymentStatus.FAILED) updateData.failedAt = new Date();
+      if (gatewayPaymentId) updateData.razorpayPaymentId = gatewayPaymentId;
 
       const payment = await prisma.payment.update({
         where: { razorpayOrderId: orderId },
         data: updateData,
       });
 
-      // Publish status change event
-      await publishEvent('payment.status.updated', {
-        paymentId: payment.id,
-        previousStatus: payment.status,
-        newStatus: status,
-        userId: payment.userId,
-      });
+      await publishEvents.paymentStatusUpdated(
+        payment.id,
+        payment.userId,
+        {
+          previousStatus: existingPayment.status,
+          newStatus: status,
+        }
+      );
 
       return payment;
-    } catch (error) {
-      logger.error('Failed to update payment status', {
-        orderId,
-        status,
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        logger.error("Failed to update payment status", {
+          orderId,
+          status,
+          message: error.message,
+          stack: error.stack,
+        });
+      } else {
+        logger.error("Unknown error updating payment status", { orderId, status, error });
+      }
       throw error;
     }
   }

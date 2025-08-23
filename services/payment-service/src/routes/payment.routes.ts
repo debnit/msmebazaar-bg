@@ -1,10 +1,14 @@
 //CTO-style recommendation for enhanced payment.routes.ts
+// services/payment-service/src/routes/payment.routes.ts
+
 import express, { Request, Response, NextFunction } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import cors from "cors";
 import compression from "compression";
-import { 
+import crypto from "crypto";
+
+import {
   createRazorpayOrderController,
   verifyPaymentController,
   getPaymentStatusController,
@@ -15,7 +19,14 @@ import {
   razorpayWebhookController,
   healthCheckController,
 } from "../controllers/payment.controller";
-import { authenticateToken, requireRole } from "../middlewares/auth";
+
+import {
+  authenticateJwt,
+  requireAuth,
+  requireRole,
+  requireAdmin,
+} from "../middlewares/auth";
+
 import { requireFeature } from "../middlewares/featureGating";
 import { Feature } from "../featureAccess";
 import { validateRequest } from "../validations/payment.schema";
@@ -27,71 +38,74 @@ const router = express.Router();
 
 // ===== SECURITY MIDDLEWARE =====
 
-router.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "checkout.razorpay.com", "*.razorpay.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "checkout.razorpay.com"],
-      imgSrc: ["'self'", "data:", "https:", "*.razorpay.com"],
-      connectSrc: ["'self'", "api.razorpay.com", "*.razorpay.com"],
-      frameSrc: ["'self'", "api.razorpay.com", "checkout.razorpay.com"],
+router.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "checkout.razorpay.com", "*.razorpay.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "checkout.razorpay.com"],
+        imgSrc: ["'self'", "data:", "https:", "*.razorpay.com"],
+        connectSrc: ["'self'", "api.razorpay.com", "*.razorpay.com"],
+        frameSrc: ["'self'", "api.razorpay.com", "checkout.razorpay.com"],
+      },
     },
-  },
-  crossOriginEmbedderPolicy: false, // Allow Razorpay embeds
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-}));
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
-router.use(cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = env.allowedOrigins?.split(',') || [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'https://checkout.razorpay.com',
-    ];
-    
-    // Allow requests with no origin (mobile apps, etc.)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      callback(null, true);
-    } else {
-      logger.warn('CORS rejection', { origin, allowedOrigins });
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With', 
-    'X-Correlation-ID',
-    'X-API-Key',
-  ],
-  exposedHeaders: ['X-Correlation-ID', 'X-Rate-Limit-Remaining'],
-  credentials: true,
-  maxAge: 86400, // 24 hours preflight cache
-}));
+router.use(
+  cors({
+    origin: (origin, callback) => {
+      const allowedOrigins = env.allowedOrigins?.split(",") || [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://checkout.razorpay.com",
+      ];
 
-router.use(compression({
-  filter: (req, res) => {
-    // Don't compress webhook endpoints
-    if (req.path.includes('/webhook')) return false;
-    return compression.filter(req, res);
-  },
-  level: 6, // Balanced compression
-  threshold: 1024, // Only compress responses > 1KB
-}));
+      if (!origin) return callback(null, true);
 
-// ===== RATE LIMITING CONFIGURATIONS =====
+      if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+        callback(null, true);
+      } else {
+        logger.warn("CORS rejection", { origin, allowedOrigins });
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "X-Correlation-ID",
+      "X-API-Key",
+    ],
+    exposedHeaders: ["X-Correlation-ID", "X-Rate-Limit-Remaining"],
+    credentials: true,
+    maxAge: 86400,
+  })
+);
+
+router.use(
+  compression({
+    filter: (req, res) => {
+      if (req.path.includes("/webhook")) return false;
+      return compression.filter(req, res);
+    },
+    level: 6,
+    threshold: 1024,
+  })
+);
+
+// ===== RATE LIMITERS =====
 
 const strictLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
+  windowMs: 60 * 1000,
   max: (req) => {
-    // Different limits based on user type
-    if (req.user?.roles?.includes('admin')) return 100;
-    if (req.user?.roles?.includes('merchant')) return 50;
-    return 10; // Regular users
+    if (req.user?.roles?.includes("admin")) return 100;
+    if (req.user?.roles?.includes("merchant")) return 50;
+    return 10;
   },
   message: (req) => ({
     error: "Too many payment requests, please try again later",
@@ -102,269 +116,198 @@ const strictLimiter = rateLimit({
   }),
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => {
-    // Rate limit by user ID for authenticated requests
-    return req.user?.id || req.ip;
-  },
+  keyGenerator: (req) => req.user?.id || req.ip,
 });
 
 const moderateLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
+  windowMs: 60 * 1000,
   max: (req) => {
-    if (req.user?.roles?.includes('admin')) return 200;
-    if (req.user?.roles?.includes('merchant')) return 100;
+    if (req.user?.roles?.includes("admin")) return 200;
+    if (req.user?.roles?.includes("merchant")) return 100;
     return 30;
   },
   message: {
     error: "Too many requests, please slow down",
-    code: "RATE_LIMIT_EXCEEDED"
+    code: "RATE_LIMIT_EXCEEDED",
   },
   keyGenerator: (req) => req.user?.id || req.ip,
 });
 
 const webhookLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
-  max: 1000, // High volume for webhooks
+  windowMs: 60 * 1000,
+  max: 1000,
   message: "Webhook rate limit exceeded",
   skip: (req: Request) => {
-    // Skip rate limiting for trusted webhook sources
-    const trustedIPs = env.razorpayWebhookIPs?.split(',') || [];
+    const trustedIPs = env.razorpayWebhookIPs?.split(",") || [];
     return trustedIPs.length > 0 && trustedIPs.includes(req.ip);
   },
   keyGenerator: (req) => `webhook:${req.ip}`,
 });
 
-// ===== MIDDLEWARE UTILITIES =====
+// ===== HELPER MIDDLEWARES =====
 
-/**
- * Webhook source validation middleware
- */
 const validateWebhookSource = (req: Request, res: Response, next: NextFunction) => {
-  const trustedIPs = env.razorpayWebhookIPs?.split(',') || [];
-  const userAgent = req.get('User-Agent') || '';
-  
-  // In development, allow all sources
-  if (env.nodeEnv === 'development') {
+  const trustedIPs = env.razorpayWebhookIPs?.split(",") || [];
+  const userAgent = req.get("User-Agent") || "";
+
+  if (env.nodeEnv === "development") {
     return next();
   }
 
-  // Validate IP if configured
   if (trustedIPs.length > 0 && !trustedIPs.includes(req.ip)) {
-    logger.warn('Webhook request from untrusted IP', { 
-      ip: req.ip,
-      userAgent,
-      path: req.path,
-    });
-    
-    return res.status(403).json({ 
+    logger.warn("Webhook request from untrusted IP", { ip: req.ip, userAgent, path: req.path });
+    return res.status(403).json({
       error: "Forbidden: Untrusted webhook source",
       code: "WEBHOOK_SOURCE_BLOCKED",
     });
   }
 
-  // Validate User-Agent pattern (basic check)
-  if (userAgent && !userAgent.toLowerCase().includes('razorpay')) {
-    logger.warn('Webhook request with suspicious User-Agent', {
-      ip: req.ip,
-      userAgent,
-      path: req.path,
-    });
+  if (userAgent && !userAgent.toLowerCase().includes("razorpay")) {
+    logger.warn("Webhook request with suspicious User-Agent", { ip: req.ip, userAgent, path: req.path });
   }
-  
+
   next();
 };
 
-/**
- * Request correlation middleware
- */
 const addCorrelationId = (req: Request, res: Response, next: NextFunction) => {
-  const correlationId = req.get('X-Correlation-ID') || 
-                       req.get('X-Request-ID') || 
-                       crypto.randomUUID();
-  
+  const correlationId =
+    req.get("X-Correlation-ID") ||
+    req.get("X-Request-ID") ||
+    crypto.randomUUID();
+
   req.correlationId = correlationId;
-  res.set('X-Correlation-ID', correlationId);
-  
+  res.set("X-Correlation-ID", correlationId);
+
   next();
 };
 
-/**
- * Request timing middleware
- */
 const requestTiming = (req: Request, res: Response, next: NextFunction) => {
   req.startTime = Date.now();
-  
-  res.on('finish', () => {
-    const duration = Date.now() - req.startTime;
-    
-    logger.info('Request completed', {
+
+  res.on("finish", () => {
+    const duration = Date.now() - (req.startTime || 0);
+
+    logger.info("Request completed", {
       method: req.method,
       path: req.path,
       statusCode: res.statusCode,
       duration,
       correlationId: req.correlationId,
-      userAgent: req.get('User-Agent'),
+      userAgent: req.get("User-Agent"),
       ip: req.ip,
     });
 
-    // Set performance header
-    res.set('X-Response-Time', `${duration}ms`);
+    res.set("X-Response-Time", `${duration}ms`);
   });
-  
+
   next();
 };
-
-// ===== APPLY GLOBAL MIDDLEWARE =====
 
 router.use(addCorrelationId);
 router.use(requestTiming);
 
-// ===== PAYMENT PROCESSING ENDPOINTS =====
+// ===== ROUTES =====
 
-/**
- * Create Payment Order
- * POST /payments/create-order
- */
+// Create Payment Order
 router.post(
   "/create-order",
   strictLimiter,
-  authenticateToken,
+  authenticateJwt,
   requireFeature(Feature.PAYMENT_PROCESSING),
-  validateRequest('createOrder'),
+  validateRequest("createOrder"),
   auditLogger.logPaymentAttempt,
   createRazorpayOrderController
 );
 
-/**
- * Verify Payment Signature
- * POST /payments/verify-payment
- */
+// Verify Payment Signature
 router.post(
   "/verify-payment",
   strictLimiter,
-  authenticateToken,
+  authenticateJwt,
   requireFeature(Feature.PAYMENT_PROCESSING),
-  validateRequest('verifyPayment'),
+  validateRequest("verifyPayment"),
   auditLogger.logPaymentVerification,
   verifyPaymentController
 );
 
-/**
- * Get Payment Status
- * GET /payments/status/:paymentId
- */
+// Get Payment Status
 router.get(
   "/status/:paymentId",
   moderateLimiter,
-  authenticateToken,
+  authenticateJwt,
   requireFeature(Feature.PAYMENT_PROCESSING),
-  validateRequest('getPaymentStatus'),
+  validateRequest("getPaymentStatus"),
   getPaymentStatusController
 );
 
-// ===== REFUND MANAGEMENT ENDPOINTS =====
-
-/**
- * Initiate Refund
- * POST /payments/refund
- */
+// Initiate Refund
 router.post(
   "/refund",
   strictLimiter,
-  authenticateToken,
+  authenticateJwt,
   requireFeature(Feature.REFUND_PROCESSING),
-  validateRequest('initiateRefund'),
+  validateRequest("initiateRefund"),
   auditLogger.logRefundAttempt,
   initiateRefundController
 );
 
-/**
- * Get Refund Status  
- * GET /payments/refund/status/:refundId
- */
+// Get Refund Status
 router.get(
   "/refund/status/:refundId",
   moderateLimiter,
-  authenticateToken,
+  authenticateJwt,
   requireFeature(Feature.REFUND_PROCESSING),
-  validateRequest('getRefundStatus'),
+  validateRequest("getRefundStatus"),
   getRefundStatusController
 );
 
-// ===== TRANSACTION HISTORY & ANALYTICS =====
-
-/**
- * Get Transaction History
- * GET /payments/transactions
- */
+// Get Transaction History
 router.get(
   "/transactions",
   moderateLimiter,
-  authenticateToken,
+  authenticateJwt,
   requireFeature(Feature.PAYMENT_PROCESSING),
-  validateRequest('getTransactions'),
+  validateRequest("getTransactions"),
   getTransactionHistoryController
 );
 
-/**
- * Get Payment Analytics (Admin/Merchant only)
- * GET /payments/analytics/summary
- */
+// Get Payment Analytics
 router.get(
   "/analytics/summary",
   moderateLimiter,
-  authenticateToken,
-  requireRole(['admin', 'merchant']),
+  authenticateJwt,
+  requireRole(["admin", "merchant"]),
   requireFeature(Feature.PAYMENT_ANALYTICS),
-  validateRequest('getAnalytics'),
+  validateRequest("getAnalytics"),
   getPaymentAnalyticsController
 );
 
-// ===== WEBHOOK ENDPOINTS =====
-
-/**
- * Razorpay Webhook Handler
- * POST /payments/webhook/razorpay
- */
+// Razorpay Webhook
 router.post(
   "/webhook/razorpay",
   webhookLimiter,
-  express.raw({ type: "application/json", limit: '10mb' }),
+  express.raw({ type: "application/json", limit: "10mb" }),
   validateWebhookSource,
   auditLogger.logWebhookReceived,
   razorpayWebhookController
 );
 
-// ===== HEALTH & MONITORING ENDPOINTS =====
-
-/**
- * Payment Service Health Check
- * GET /payments/health
- */
+// Health Check
 router.get("/health", healthCheckController);
 
-/**
- * Payment Service Readiness Check
- * GET /payments/ready
- */
+// Readiness Check
 router.get("/ready", async (req: Request, res: Response) => {
   try {
-    // Perform comprehensive readiness checks
     const checks = await Promise.allSettled([
-      // Database connectivity
       prisma.$queryRaw`SELECT 1`,
-      // Kafka producer health
+      // Assume getProducerHealth() is implemented and imported correctly
       getProducerHealth(),
-      // Razorpay API connectivity (simple test)
-      fetch('https://api.razorpay.com/', { 
-        method: 'HEAD',
-        timeout: 5000 
-      }),
+      fetch("https://api.razorpay.com/", { method: "HEAD", timeout: 5000 }),
     ]);
 
-    const dbHealthy = checks[0].status === 'fulfilled';
-    const kafkaHealthy = checks[1].status === 'fulfilled' && checks[1].value;
-    const razorpayHealthy = checks[2].status === 'fulfilled';
+    const dbHealthy = checks[0].status === "fulfilled";
+    const kafkaHealthy = checks.status === "fulfilled" && checks.value;
+    const razorpayHealthy = checks.status === "fulfilled";
 
     const allHealthy = dbHealthy && kafkaHealthy && razorpayHealthy;
 
@@ -374,12 +317,12 @@ router.get("/ready", async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
       checks: {
         database: dbHealthy ? "healthy" : "unhealthy",
-        kafka: kafkaHealthy ? "healthy" : "unhealthy", 
+        kafka: kafkaHealthy ? "healthy" : "unhealthy",
         razorpay: razorpayHealthy ? "healthy" : "unhealthy",
       },
     });
-  } catch (error) {
-    logger.error('Readiness check failed', { error: error.message });
+  } catch (error: any) {
+    logger.error("Readiness check failed", { error: error.message });
     res.status(503).json({
       status: "not ready",
       error: error.message,
@@ -388,14 +331,11 @@ router.get("/ready", async (req: Request, res: Response) => {
   }
 });
 
-/**
- * Payment Service Metrics
- * GET /payments/metrics (Admin only)
- */
+// Metrics (Admin only)
 router.get(
   "/metrics",
-  authenticateToken,
-  requireRole(['admin']),
+  authenticateJwt,
+  requireRole(["admin"]),
   async (req: Request, res: Response) => {
     try {
       const metrics = {
@@ -404,7 +344,7 @@ router.get(
         service: {
           uptime: process.uptime(),
           memory: process.memoryUsage(),
-          version: process.env.npm_package_version || '1.0.0',
+          version: process.env.npm_package_version || "1.0.0",
         },
       };
 
@@ -413,35 +353,34 @@ router.get(
         data: metrics,
         timestamp: new Date().toISOString(),
       });
-    } catch (error) {
-      logger.error('Metrics collection failed', { error: error.message });
+    } catch (error: any) {
+      logger.error("Metrics collection failed", { error: error.message });
       res.status(500).json({
         success: false,
-        error: 'Failed to collect metrics',
+        error: "Failed to collect metrics",
       });
     }
   }
 );
 
-// ===== ERROR HANDLING MIDDLEWARE =====
+// ===== ERROR HANDLING =====
 
 router.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  const correlationId = req.correlationId || 'unknown';
+  const correlationId = req.correlationId || "unknown";
   const duration = req.startTime ? Date.now() - req.startTime : 0;
 
-  logger.error('Payment route error', {
+  logger.error("Payment route error", {
     error: err.message,
     stack: err.stack,
     path: req.path,
     method: req.method,
     ip: req.ip,
-    userAgent: req.get('User-Agent'),
+    userAgent: req.get("User-Agent"),
     correlationId,
     duration,
   });
 
-  // Handle specific error types
-  if (err.name === 'ValidationError') {
+  if (err.name === "ValidationError") {
     return res.status(400).json({
       success: false,
       error: "Request validation failed",
@@ -450,7 +389,7 @@ router.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     });
   }
 
-  if (err.message === 'Not allowed by CORS') {
+  if (err.message === "Not allowed by CORS") {
     return res.status(403).json({
       success: false,
       error: "CORS policy violation",
@@ -459,7 +398,7 @@ router.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     });
   }
 
-  if (err.name === 'PayloadTooLargeError') {
+  if (err.name === "PayloadTooLargeError") {
     return res.status(413).json({
       success: false,
       error: "Request payload too large",
@@ -468,27 +407,23 @@ router.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     });
   }
 
-  // Generic error response
-  const isDevelopment = env.nodeEnv === 'development';
-  
+  const isDevelopment = env.nodeEnv === "development";
+
   res.status(500).json({
     success: false,
     error: "Internal server error",
     code: "PAYMENT_ROUTE_ERROR",
     correlationId,
-    ...(isDevelopment && {
-      details: err.message,
-      stack: err.stack,
-    }),
+    ...(isDevelopment && { details: err.message, stack: err.stack }),
   });
 });
 
 // ===== 404 HANDLER =====
 
-router.use('*', (req: Request, res: Response) => {
-  const correlationId = req.correlationId || 'unknown';
-  
-  logger.warn('Payment route not found', {
+router.use("*", (req: Request, res: Response) => {
+  const correlationId = req.correlationId || "unknown";
+
+  logger.warn("Payment route not found", {
     path: req.originalUrl,
     method: req.method,
     correlationId,

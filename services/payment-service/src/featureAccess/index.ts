@@ -1,1 +1,1 @@
-export * from "../../../shared/api-gateway/src/utils/featureAccess";
+export * from "../../../../api-gateway/src/utils/featureAccess";

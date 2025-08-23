@@ -1,6 +1,5 @@
 // ENHANCED PRODUCTION-GRADE FEATURE GATING
 import { Request, Response, NextFunction } from "express";
-import { AuthenticatedRequest } from "./auth";
 import { logger } from "../utils/logger";
 
 export enum Feature {
@@ -78,7 +77,7 @@ export class FeatureAccessService {
 }
 
 export function requireFeature(feature: Feature) {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     const user = req.user;
     
     if (!user) {
@@ -87,18 +86,17 @@ export function requireFeature(feature: Feature) {
         ip: req.ip,
         path: req.path
       });
-      
-      return res.status(401).json({ 
+        res.status(401).json({ 
         error: "Authentication required",
         code: "AUTH_REQUIRED"
-      });
+      }); 
+       return;
     }
 
     const context: FeatureContext = {
       role: user.roles?.[0] || "",
       isPro: user.isPro || false,
       userId: user.id,
-      // Add merchantId if available from user context
     };
 
     const accessResult = FeatureAccessService.checkFeatureAccess(feature, context);
@@ -124,7 +122,8 @@ export function requireFeature(feature: Feature) {
         responseData.upgradeUrl = `/upgrade?feature=${feature}`;
       }
 
-      return res.status(403).json(responseData);
+        res.status(403).json(responseData);
+        return;
     }
 
     logger.info('Feature access granted', {
@@ -138,7 +137,6 @@ export function requireFeature(feature: Feature) {
     next();
   };
 }
-
 // Payment-specific feature gates
 export const requirePaymentAccess = requireFeature(Feature.PAYMENT_PROCESSING);
 export const requireRefundAccess = requireFeature(Feature.REFUND_PROCESSING);

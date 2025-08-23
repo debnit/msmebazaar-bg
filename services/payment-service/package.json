@@ -33,7 +33,7 @@
     "@types/jest": "^29.0.0",
     "@types/jsonwebtoken": "^9.0.0",
     "@types/kafkajs": "^1.8.2",
-    "@types/node": "^18.19.123",
+    "@types/node": "^18.19.0",
     "@types/pino": "^7.0.4",
     "@types/uuid": "^9.0.2",
     "jest": "^29.0.0",

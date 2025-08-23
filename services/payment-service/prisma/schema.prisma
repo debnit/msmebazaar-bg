@@ -34,8 +34,9 @@ model Payment {
   
   // User & Order Relations
   userId            String
-  orderId           String?
-  merchantId        String
+  orderId           String?        // optional if payment is not always linked 
+  merchantId        String?        // made optional for flexibility
+
   
   // Payment Details - Use Decimal for precision
   amount            Decimal       @db.Decimal(10,2)
@@ -52,7 +53,7 @@ model Payment {
   // Security & Audit
   ipAddress         String?
   userAgent         String?
-  metadata          Json?         // Flexible metadata storage
+  metadata          Json?         @default("{}")    // Flexible metadata storage
   failureReason     String?
   
   // Timestamps

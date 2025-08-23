@@ -1,4 +1,5 @@
-// CTO RECOMMENDATION - Production-grade Kafka producer
+// services/payment-service/src/kafka/producer.ts
+
 import { Kafka, Producer, ProducerBatch, ProducerRecord } from "kafkajs";
 import { logger } from "../utils/logger";
 import { env } from "../config/env";
@@ -30,7 +31,7 @@ class PaymentEventProducer {
 
     this.producer = this.kafka.producer({
       maxInFlightRequests: 1,
-      idempotent: true, // Prevent duplicate messages
+      idempotent: true,
       transactionTimeout: 30000,
     });
   }
@@ -42,7 +43,7 @@ class PaymentEventProducer {
       await this.producer.connect();
       this.connected = true;
       logger.info('Kafka producer connected successfully');
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to connect Kafka producer', {
         error: error.message,
       });
@@ -57,7 +58,7 @@ class PaymentEventProducer {
       await this.producer.disconnect();
       this.connected = false;
       logger.info('Kafka producer disconnected');
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to disconnect Kafka producer', {
         error: error.message,
       });
@@ -74,7 +75,7 @@ class PaymentEventProducer {
         topic: 'payment_events',
         messages: [
           {
-            key: event.paymentId, // Partition by payment ID
+            key: event.paymentId,
             value: JSON.stringify({
               ...event,
               timestamp: new Date().toISOString(),
@@ -96,7 +97,7 @@ class PaymentEventProducer {
         paymentId: event.paymentId,
         userId: event.userId,
       });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to publish payment event', {
         error: error.message,
         eventType: event.eventType,
@@ -138,7 +139,7 @@ class PaymentEventProducer {
       logger.info('Payment event batch published successfully', {
         eventCount: events.length,
       });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Failed to publish payment event batch', {
         error: error.message,
         eventCount: events.length,
@@ -182,6 +183,16 @@ export const publishEvents = {
   refundInitiated: (paymentId: string, userId: string, data: any) =>
     paymentEventProducer.publishPaymentEvent({
       eventType: 'payment.refund.initiated',
+      paymentId,
+      userId,
+      timestamp: new Date().toISOString(),
+      data,
+    }),
+
+  // Newly added event for updating payment status
+  paymentStatusUpdated: (paymentId: string, userId: string, data: any) =>
+    paymentEventProducer.publishPaymentEvent({
+      eventType: 'payment.status.updated',
       paymentId,
       userId,
       timestamp: new Date().toISOString(),

@@ -6,6 +6,8 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 interface RazorpayConfig {
   keyId: string;
   keySecret: string;
+  webhookSecret: string; // Add this line
+
 }
 
 interface EnvConfig {

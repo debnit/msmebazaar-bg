@@ -1,126 +1,69 @@
-//**✅ CTO Recommendation - Explicit Authentication Implementation:**
+// services/payment-service/src/middlewares/auth.ts
 
-
-// PRODUCTION-GRADE AUTHENTICATION MIDDLEWARE
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
-import { env } from "../config/env";
+import { getSessionUser, jwtMw } from "@shared/auth"; // Use your configured path alias
+import { UserRole } from "@shared/types/feature";
+import { UnauthorizedError, ForbiddenError } from "../utils/errors";
 import { logger } from "../utils/logger";
 
-export interface AuthenticatedUser {
-  id: string;
-  email: string;
-  roles: string[];
-  isPro: boolean;
-  exp: number;
-  iat: number;
-}
-
-export interface AuthenticatedRequest extends Request {
-  user?: AuthenticatedUser;
-}
-
-export const authenticateToken = (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-): void => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-
-    if (!token) {
-      logger.warn('Authentication failed: No token provided', {
-        ip: req.ip,
-        userAgent: req.get('User-Agent'),
-        path: req.path
-      });
-        res.status(401).json({ 
-        error: "Authentication required",
-        code: "MISSING_TOKEN"
-      });
-    }
-
-    // Verify JWT with enhanced validation
-    const decoded = jwt.verify(token, env.jwtSecret, {
-      algorithms: ['HS256'], // Restrict algorithms
-      issuer: env.jwtIssuer, // Validate issuer
-      audience: env.jwtAudience, // Validate audience
-      maxAge: '24h' // Maximum token age
-    }) as AuthenticatedUser;
-
-    // Additional security checks
-    if (!decoded.id || !decoded.email) {
-      throw new Error('Invalid token payload');
-    }
-
-    // Check token expiration with buffer
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (decoded.exp < currentTime) {
-      throw new Error('Token expired');
-    }
-
-    req.user = decoded;
-    
-    logger.info('Authentication successful', {
-      userId: decoded.id,
-      path: req.path,
-      method: req.method
-    });
-
-    next();
-  } catch (error) {
-    logger.error('Authentication failed', {
-      error: error.message,
-      ip: req.ip,
-      path: req.path
-    });
-
-    if (error.name === 'TokenExpiredError') {
-        res.status(401).json({ 
-        error: "Token expired",
-        code: "TOKEN_EXPIRED"
-      });
-    }
-
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ 
-        error: "Invalid token",
-        code: "INVALID_TOKEN"
-      });
-    }
-
-    return res.status(401).json({ 
-      error: "Authentication failed",
-      code: "AUTH_ERROR"
-    });
+/**
+ * Middleware to strictly authenticate JWT from Authorization header.
+ * Rejects with 401 Unauthorized if token missing or invalid.
+ */
+export const authenticateJwt = jwtMw(process.env.JWT_SECRET || "", true);
+export {UserRole} ;
+/**
+ * Middleware to require authenticated user on the request.
+ * Adds the user object to req.user.
+ * Throws UnauthorizedError if not authenticated.
+ */
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const user = getSessionUser(req);
+  if (!user) {
+    logger.warn("Authentication required but no user found", { ip: req.ip, path: req.path });
+    return next(new UnauthorizedError("Authentication required"));
   }
-};
+  req.user = user;
+  next();
+}
 
-// Optional middleware for enhanced security
-export const requireRole = (allowedRoles: string[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-    if (!req.user) {
-       res.status(401).json({ error: "Authentication required" });
+/**
+ * Role-based authorization middleware factory.
+ * Pass one or more allowed roles.
+ * Checks if user's roles intersect allowed roles, else throws ForbiddenError.
+ */
+export function requireRole(...allowedRoles: UserRole[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const user = getSessionUser(req);
+    if (!user || !user.roles) {
+      logger.warn("Authorization failed - missing user roles", { ip: req.ip, path: req.path });
+      return next(new UnauthorizedError("Authentication required"));
     }
-
-    const userRoles = req.user.roles || [];
-    const hasRole = allowedRoles.some(role => userRoles.includes(role));
-
-    if (!hasRole) {
-      logger.warn('Authorization failed: Insufficient role', {
-        userId: req.user.id,
-        userRoles,
+    const hasAccess = user.roles.some((role) => allowedRoles.includes(role));
+    if (!hasAccess) {
+      logger.warn("Authorization failed - insufficient roles", {
+        userId: user.id,
+        userRoles: user.roles,
         requiredRoles: allowedRoles,
-        path: req.path
+        path: req.path,
       });
-      
-      res.status(403).json({ 
-        error: "Insufficient permissions",
-        code: "INSUFFICIENT_ROLE"
-      });
+      return next(new ForbiddenError("Insufficient permissions"));
     }
-
     next();
   };
-};
+}
+
+/**
+ * Middleware to restrict access to ADMIN and SUPER_ADMIN roles only.
+ */
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const user = getSessionUser(req);
+  if (
+    !user ||
+    !user.roles.some((role) => role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN)
+  ) {
+    logger.warn("Admin access required but not present", { ip: req.ip, path: req.path });
+    return next(new ForbiddenError("Admin access required"));
+  }
+  next();
+}
