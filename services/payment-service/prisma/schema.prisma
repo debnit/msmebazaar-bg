@@ -1,22 +1,115 @@
+// PRODUCTION-GRADE SCHEMA
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum Currency {
+  INR
+  USD
+  EUR
+}
+
+enum PaymentMethod {
+  CARD
+  UPI
+  NETBANKING
+  WALLET
+}
+
 model Payment {
-  id                String   @id @default(cuid())
+  id                String        @id @default(cuid())
+  
+  // User & Order Relations
   userId            String
-  amount            Float
-  currency          String
-  status            String
-  razorpayOrderId   String?  @unique
+  orderId           String?
+  merchantId        String
+  
+  // Payment Details - Use Decimal for precision
+  amount            Decimal       @db.Decimal(10,2)
+  currency          Currency      @default(INR)
+  method            PaymentMethod
+  status            PaymentStatus @default(PENDING)
+  
+  // Gateway Integration
+  razorpayOrderId   String?       @unique
+  razorpayPaymentId String?       @unique
   gatewayRef        String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  gatewayResponse   Json?         // Store complete gateway response
+  
+  // Security & Audit
+  ipAddress         String?
+  userAgent         String?
+  metadata          Json?         // Flexible metadata storage
+  failureReason     String?
+  
+  // Timestamps
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  paidAt            DateTime?
+  failedAt          DateTime?
+  
+  // Relations
+  refunds           Refund[]
+  webhookEvents     WebhookEvent[]
+  
+  @@map("payments")
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Refund {
-  id           String    @id @default(uuid())
-  paymentId    String
-  amount       Float
-  status       String    // pending, processed, failed
-  reason       String
-  processedAt  DateTime?
-  createdAt    DateTime  @default(now())
-  payment      Payment   @relation(fields: [paymentId], references: [id])
+  id            String        @id @default(cuid())
+  paymentId     String
+  amount        Decimal       @db.Decimal(10,2)
+  status        RefundStatus  @default(PENDING)
+  reason        String
+  
+  // Gateway Details
+  razorpayRefundId String?    @unique
+  gatewayResponse  Json?
+  
+  // Audit
+  initiatedBy   String        // User ID who initiated refund
+  processedAt   DateTime?
+  createdAt     DateTime      @default(now())
+  
+  // Relations
+  payment       Payment       @relation(fields: [paymentId], references: [id])
+  
+  @@map("refunds")
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  paymentId   String
+  eventType   String
+  eventData   Json
+  processed   Boolean  @default(false)
+  signature   String
+  createdAt   DateTime @default(now())
+  
+  payment     Payment  @relation(fields: [paymentId], references: [id])
+  
+  @@map("webhook_events")
 }

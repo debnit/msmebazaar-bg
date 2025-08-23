@@ -1,25 +1,46 @@
 {
   "compilerOptions": {
+    /* Output to dist */
+    "outDir": "./dist",
+    "rootDir": "./",
+    "baseUrl": "./",
+    "paths": {
+      "@shared/*": ["../../shared/*"]
+    }
+    /* Module + target for Node.js v18+ */
     "target": "ES2021",
     "module": "CommonJS",
-    "outDir": "dist",
-    "rootDir": "src",
-    "baseUrl": "./src",
-    "paths": {
-      "@shared/*": ["../../../shared/*"]
-    },
+    "moduleResolution": "Node",
+    "lib": ["ES2021"],
+    "types": ["node", "jest"],
+
+    /* Strict type-checking */
     "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
-    "allowJs": false,
     "noImplicitAny": true,
-    "strictNullChecks": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "sourceMap": true
+    "noImplicitReturns": true,
+    "alwaysStrict": true,
+
+    /* Interop and JSON */
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+
+    /* Source maps for debugging */
+    "sourceMap": true,
+
+    /* Allow decorators if needed (future RBAC/logging features) */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    /* Incremental build for faster re-builds */
+    "incremental": true,
+
+    /* Avoid compile errors with TS tooling */
+    "skipLibCheck": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*.ts","../../shared/**/*"],
+  "exclude": ["node_modules", "dist", "src/tests"]
 }

@@ -1,23 +1,73 @@
-import { Kafka } from 'kafkajs';
-import { updatePaymentStatus } from '../services/payment.service';
+import { Kafka, Consumer, EachMessagePayload } from "kafkajs";
+import { env } from "../config/env";
+import { logger } from "../utils/logger";
+import { PaymentService } from "../services/payment.service";
 
-const kafka = new Kafka({
-  brokers: [process.env.KAFKA_BROKER || 'localhost:9092']
-});
+class PaymentEventConsumer {
+  private kafka: Kafka;
+  private consumer: Consumer;
+  private connected = false;
 
-const consumer = kafka.consumer({ groupId: 'payment-service-group' });
+  constructor() {
+    this.kafka = new Kafka({
+      clientId: "payment-service-consumer",
+      brokers: env.kafkaBrokers,
+    });
+    this.consumer = this.kafka.consumer({ groupId: env.kafkaConsumerGroupId });
+  }
 
-export async function startConsumer() {
-  await consumer.connect();
-  await consumer.subscribe({ topic: 'payment_events', fromBeginning: false });
+  async connect() {
+    if (this.connected) return;
+    await this.consumer.connect();
+    await this.consumer.subscribe({ topic: "payment_events", fromBeginning: false });
+    this.connected = true;
+    logger.info("Kafka consumer connected");
+  }
 
-  await consumer.run({
-    eachMessage: async ({ message }) => {
-      if (message.value) {
-        const event = JSON.parse(message.value.toString());
-        // Handle payment event, e.g., update DB status
-        await updatePaymentStatus(event.paymentId, event.status, event.gatewayRef);
-      }
-    }
-  });
+  async disconnect() {
+    if (!this.connected) return;
+    await this.consumer.disconnect();
+    this.connected = false;
+    logger.info("Kafka consumer disconnected");
+  }
+
+  async run() {
+    await this.connect();
+    await this.consumer.run({
+      eachMessage: async ({ topic, partition, message }: EachMessagePayload) => {
+        try {
+          if (!message.value) {
+            logger.warn("Received empty Kafka message");
+            return;
+          }
+          const event = JSON.parse(message.value.toString());
+          logger.info("Received payment event", { eventType: event.eventType, paymentId: event.paymentId });
+
+          switch (event.eventType) {
+            case "payment.completed":
+              // Implement business logic if any needed via PaymentService or other service
+              logger.info("Processing payment.completed event", { paymentId: event.paymentId });
+              break;
+
+            case "payment.failed":
+              logger.info("Processing payment.failed event", { paymentId: event.paymentId });
+              break;
+
+            case "payment.refund.initiated":
+              logger.info("Processing payment.refund.initiated event", { paymentId: event.paymentId });
+              break;
+
+            // Add other event types here as needed
+
+            default:
+              logger.warn("Unknown payment event type received", { eventType: event.eventType });
+          }
+        } catch (err) {
+          logger.error("Error processing payment event message", { error: err });
+        }
+      },
+    });
+  }
 }
+
+export const paymentEventConsumer = new PaymentEventConsumer();

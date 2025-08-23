@@ -1,10 +1,36 @@
 import dotenv from "dotenv";
-dotenv.config();
+import path from "path";
 
-export const env = {
-  port: process.env.SERVICE_PORT || 8000,
-  jwtSecret: process.env.JWT_SECRET || "changeme",
-  dbUrl: process.env.DATABASE_URL!,
-  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || "your_test_key_id",
-  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "your_test_key_secret",
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+
+interface RazorpayConfig {
+  keyId: string;
+  keySecret: string;
+}
+
+interface EnvConfig {
+  port: number;
+  nodeEnv: "development" | "production" | "test";
+  dbUrl: string;
+  jwtSecret: string;
+  razorpay: RazorpayConfig;
+  kafkaBrokers: string[];
+  kafkaConsumerGroupId: string;
+  logLevel: "info" | "debug" | "warn" | "error";
+}
+
+export const env: EnvConfig = {
+  port: Number(process.env.SERVICE_PORT || 4004),
+  nodeEnv: (process.env.NODE_ENV as any) || "development",
+  dbUrl: process.env.DATABASE_URL || "",
+  jwtSecret: process.env.JWT_SECRET || "",
+  razorpay: {
+    keyId: process.env.RAZORPAY_KEY_ID || "",
+    keySecret: process.env.RAZORPAY_KEY_SECRET || "",
+  },
+  kafkaBrokers: (process.env.KAFKA_BROKERS || "localhost:9092")
+    .split(",")
+    .map((broker) => broker.trim()),
+  kafkaConsumerGroupId: process.env.KAFKA_CONSUMER_GROUP_ID || "payment-service-group",
+  logLevel: (process.env.LOG_LEVEL as any) || "info",
 };
