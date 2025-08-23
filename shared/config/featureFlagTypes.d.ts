@@ -1,0 +1,59 @@
+export declare enum Feature {
+    ADVANCED_ANALYTICS = "ADVANCED_ANALYTICS",
+    CUSTOM_REPORTS = "CUSTOM_REPORTS",
+    PRIORITY_SUPPORT = "PRIORITY_SUPPORT",
+    PRO_UPGRADE = "PRO_UPGRADE",
+    PAYMENTS = "PAYMENTS",
+    PAYMENT_HISTORY = "PAYMENT_HISTORY",
+    AI_BUSINESS_VALUATION = "AI_BUSINESS_VALUATION",
+    RECOMMENDATIONS = "RECOMMENDATIONS",
+    MATCHMAKING = "MATCHMAKING",
+    SEARCHMATCHMAKING = "SEARCHMATCHMAKING",
+    LOAN_CTA = "LOAN_CTA",
+    BUSINESS_LOANS = "BUSINESS_LOANS",
+    COMPLIANCE_CHECKLIST = "COMPLIANCE_CHECKLIST",
+    EXIT_STRATEGY = "EXIT_STRATEGY",
+    CRM_PIPELINE = "CRM_PIPELINE",
+    LEADERSHIP_TRAINING = "LEADERSHIP_TRAINING",
+    DEALS_MARKETPLACE = "DEALS_MARKETPLACE",
+    ADMIN_FEATURE_TOGGLES = "ADMIN_FEATURE_TOGGLES",
+    ADMIN_USER_MANAGEMENT = "ADMIN_USER_MANAGEMENT",
+    SUPERADMIN_MONITORING = "SUPERADMIN_MONITORING",
+    SUPERADMIN_DATABASE_OPS = "SUPERADMIN_DATABASE_OPS",
+    USER_PROFILE = "USER_PROFILE",
+    BUSINESS_PROFILE = "BUSINESS_PROFILE",
+    BUSINESS_PROFILE_VERIFY = "BUSINESS_PROFILE_VERIFY",
+    MSME_NETWORKING = "MSME_NETWORKING",
+    B2B_MARKETPLACE = "B2B_MARKETPLACE",
+    MESSAGING = "MESSAGING",
+    ORDERS_MANAGEMENT = "ORDERS_MANAGEMENT",
+    MARKET_LINKAGE = "MARKET_LINKAGE",
+    SELLER = "SELLER",
+    MSME = "MSME"
+}
+export declare enum UserRole {
+    ADMIN = "admin",
+    SUPER_ADMIN = "super_admin",
+    MSME_OWNER = "msmeOwner",
+    SELLER = "seller",
+    BUYER = "buyer",
+    AGENT = "agent",
+    INVESTOR = "investor",
+    DEVELOPER = "developer"
+}
+export declare enum AccessLevel {
+    READ = "READ",
+    WRITE = "WRITE",
+    ADMIN = "ADMIN"
+}
+export interface FeatureMeta {
+    label: string;
+    description: string;
+    enabled: boolean;
+    proOnly?: boolean;
+    rolesEnabled?: UserRole[];
+    accessLevel?: AccessLevel;
+    rolloutPercentage?: number;
+    expiry?: string;
+    availableRegions?: string[];
+}
