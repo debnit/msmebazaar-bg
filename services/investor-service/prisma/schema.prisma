@@ -1,0 +1,691 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Model (Investor-focused)
+model User {
+  id                  String             @id @default(cuid())
+  email               String             @unique
+  phone               String?            @unique
+  firstName           String
+  lastName            String
+  profileImage        String?
+  kycStatus           KYCStatus          @default(PENDING)
+  kycDocuments        KYCDocument[]
+  accreditationLevel  AccreditationLevel @default(RETAIL)
+  riskProfile         RiskProfile        @default(MODERATE)
+  
+  // Authentication
+  emailVerified       Boolean            @default(false)
+  phoneVerified       Boolean            @default(false)
+  twoFactorEnabled    Boolean            @default(false)
+  
+  // Profile Information
+  dateOfBirth         DateTime?
+  occupation          String?
+  annualIncome        Decimal?           @db.Decimal(15, 2)
+  netWorth            Decimal?           @db.Decimal(15, 2)
+  investmentExperience Int?              // Years of experience
+  
+  // Address
+  address             Address?
+  
+  // Investment Portfolio
+  portfolio           Portfolio?
+  investments         Investment[]
+  watchlist           WatchlistItem[]
+  
+  // Notifications & Preferences
+  notifications       Notification[]
+  preferences         UserPreferences?
+  
+  // Subscription & Billing
+  subscription        Subscription?
+  billingInfo         BillingInfo[]
+  
+  // Activity Tracking
+  loginHistory        LoginHistory[]
+  activityLogs        ActivityLog[]
+  
+  // Timestamps
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  lastLoginAt         DateTime?
+  
+  @@map("users")
+}
+
+// Address Model
+model Address {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  street      String
+  city        String
+  state       String
+  pincode     String
+  country     String  @default("India")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("addresses")
+}
+
+// KYC Document Model
+model KYCDocument {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  documentType  DocumentType
+  documentNumber String
+  documentUrl   String
+  status        KYCStatus   @default(PENDING)
+  rejectionReason String?
+  
+  verifiedAt    DateTime?
+  verifiedBy    String?     // Admin user ID
+  
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  
+  @@map("kyc_documents")
+}
+
+// Investment Portfolio
+model Portfolio {
+  id                    String              @id @default(cuid())
+  userId                String              @unique
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  totalInvested         Decimal             @default(0) @db.Decimal(15, 2)
+  currentValue          Decimal             @default(0) @db.Decimal(15, 2)
+  totalReturns          Decimal             @default(0) @db.Decimal(15, 2)
+  returnsPercentage     Decimal             @default(0) @db.Decimal(5, 2)
+  
+  // Asset Allocation
+  equityAllocation      Decimal             @default(0) @db.Decimal(5, 2)
+  debtAllocation        Decimal             @default(0) @db.Decimal(5, 2)
+  alternativeAllocation Decimal             @default(0) @db.Decimal(5, 2)
+  
+  // Performance Metrics
+  portfolioTransactions PortfolioTransaction[]
+  performanceMetrics    PerformanceMetric[]
+  
+  lastUpdatedAt         DateTime            @updatedAt
+  createdAt             DateTime            @default(now())
+  
+  @@map("portfolios")
+}
+
+// MSME Business Model (Investment Target)
+model Business {
+  id                  String            @id @default(cuid())
+  
+  // Business Information
+  businessName        String
+  legalName           String
+  businessType        BusinessType
+  category            BusinessCategory
+  subcategory         String?
+  description         String
+  website             String?
+  
+  // Registration Details
+  cinNumber           String?           @unique
+  gstNumber           String?           @unique
+  panNumber           String?           @unique
+  udyamNumber         String?           @unique
+  
+  // Financial Information
+  annualRevenue       Decimal?          @db.Decimal(15, 2)
+  monthlyRevenue      Decimal?          @db.Decimal(15, 2)
+  profitMargin        Decimal?          @db.Decimal(5, 2)
+  employeeCount       Int?
+  foundedYear         Int?
+  
+  // Investment Details
+  fundingStage        FundingStage
+  investmentRounds    InvestmentRound[]
+  valuation           Decimal?          @db.Decimal(15, 2)
+  seekingFunding      Boolean           @default(false)
+  fundingGoal         Decimal?          @db.Decimal(15, 2)
+  fundingRaised       Decimal           @default(0) @db.Decimal(15, 2)
+  
+  // Documentation
+  businessPlan        String?           // URL to business plan
+  financialStatements String?           // URL to financial docs
+  pitchDeck           String?           // URL to pitch deck
+  
+  // Location
+  address             BusinessAddress?
+  
+  // Metrics & Analytics
+  businessMetrics     BusinessMetric[]
+  
+  // Status & Verification
+  verificationStatus  VerificationStatus @default(PENDING)
+  listingStatus       ListingStatus      @default(DRAFT)
+  
+  // Relationships
+  investments         Investment[]
+  watchlistItems      WatchlistItem[]
+  
+  // Timestamps
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  listedAt            DateTime?
+  
+  @@map("businesses")
+}
+
+// Business Address
+model BusinessAddress {
+  id          String   @id @default(cuid())
+  businessId  String   @unique
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  street      String
+  city        String
+  state       String
+  pincode     String
+  country     String   @default("India")
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("business_addresses")
+}
+
+// Investment Model
+model Investment {
+  id                String            @id @default(cuid())
+  
+  // Parties
+  investorId        String
+  investor          User              @relation(fields: [investorId], references: [id])
+  businessId        String
+  business          Business          @relation(fields: [businessId], references: [id])
+  
+  // Investment Details
+  amount            Decimal           @db.Decimal(15, 2)
+  investmentType    InvestmentType
+  equityPercentage  Decimal?          @db.Decimal(5, 4) // Up to 99.9999%
+  
+  // Investment Round
+  roundId           String?
+  round             InvestmentRound?  @relation(fields: [roundId], references: [id])
+  
+  // Status & Tracking
+  status            InvestmentStatus  @default(PENDING)
+  paymentStatus     PaymentStatus     @default(PENDING)
+  
+  // Documentation
+  agreementUrl      String?
+  certificateUrl    String?
+  
+  // Dates
+  investmentDate    DateTime          @default(now())
+  maturityDate      DateTime?
+  exitDate          DateTime?
+  
+  // Returns
+  currentValue      Decimal?          @db.Decimal(15, 2)
+  returns           Decimal           @default(0) @db.Decimal(15, 2)
+  returnsPercentage Decimal           @default(0) @db.Decimal(5, 2)
+  
+  // Portfolio Tracking
+  portfolioTransactions PortfolioTransaction[]
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  @@map("investments")
+}
+
+// Investment Round Model
+model InvestmentRound {
+  id                String          @id @default(cuid())
+  businessId        String
+  business          Business        @relation(fields: [businessId], references: [id])
+  
+  // Round Details
+  roundName         String          // Seed, Series A, Series B, etc.
+  roundType         RoundType
+  targetAmount      Decimal         @db.Decimal(15, 2)
+  raisedAmount      Decimal         @default(0) @db.Decimal(15, 2)
+  minimumInvestment Decimal         @db.Decimal(15, 2)
+  maximumInvestment Decimal?        @db.Decimal(15, 2)
+  
+  // Valuation
+  preMoneyValuation Decimal?        @db.Decimal(15, 2)
+  postMoneyValuation Decimal?       @db.Decimal(15, 2)
+  
+  // Timeline
+  startDate         DateTime
+  endDate           DateTime
+  status            RoundStatus     @default(UPCOMING)
+  
+  // Terms
+  termSheet         String?         // URL to term sheet
+  description       String?
+  useOfFunds        String?
+  
+  // Investors
+  investments       Investment[]
+  
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  @@map("investment_rounds")
+}
+
+// Watchlist Model
+model WatchlistItem {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  addedAt    DateTime @default(now())
+  
+  @@unique([userId, businessId])
+  @@map("watchlist_items")
+}
+
+// Portfolio Transaction Model
+model PortfolioTransaction {
+  id            String            @id @default(cuid())
+  portfolioId   String
+  portfolio     Portfolio         @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  investmentId  String?
+  investment    Investment?       @relation(fields: [investmentId], references: [id])
+  
+  type          TransactionType
+  amount        Decimal           @db.Decimal(15, 2)
+  fees          Decimal           @default(0) @db.Decimal(15, 2)
+  netAmount     Decimal           @db.Decimal(15, 2)
+  
+  description   String?
+  transactionDate DateTime        @default(now())
+  
+  createdAt     DateTime          @default(now())
+  
+  @@map("portfolio_transactions")
+}
+
+// Business Metrics Model
+model BusinessMetric {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  metric     String   // Revenue, Profit, Employees, etc.
+  value      Decimal  @db.Decimal(15, 2)
+  period     String   // Monthly, Quarterly, Yearly
+  date       DateTime
+  
+  createdAt  DateTime @default(now())
+  
+  @@map("business_metrics")
+}
+
+// Performance Metrics Model
+model PerformanceMetric {
+  id          String    @id @default(cuid())
+  portfolioId String
+  portfolio   Portfolio @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+  
+  metric      String    // ROI, CAGR, Sharpe Ratio, etc.
+  value       Decimal   @db.Decimal(15, 4)
+  period      String    // 1Y, 3Y, 5Y, All Time
+  date        DateTime
+  
+  createdAt   DateTime  @default(now())
+  
+  @@map("performance_metrics")
+}
+
+// User Preferences Model
+model UserPreferences {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Notification Preferences
+  emailNotifications  Boolean @default(true)
+  smsNotifications    Boolean @default(false)
+  pushNotifications   Boolean @default(true)
+  
+  // Investment Preferences
+  riskTolerance       RiskProfile @default(MODERATE)
+  investmentGoals     String[]
+  preferredSectors    String[]
+  minimumInvestment   Decimal? @db.Decimal(15, 2)
+  maximumInvestment   Decimal? @db.Decimal(15, 2)
+  
+  // Privacy Settings
+  profileVisibility   ProfileVisibility @default(PRIVATE)
+  showPortfolio       Boolean @default(false)
+  
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  
+  @@map("user_preferences")
+}
+
+// Subscription Model
+model Subscription {
+  id              String           @id @default(cuid())
+  userId          String           @unique
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  plan            SubscriptionPlan
+  status          SubscriptionStatus
+  
+  // Billing
+  amount          Decimal          @db.Decimal(10, 2)
+  currency        String           @default("INR")
+  billingCycle    BillingCycle
+  
+  // Payment Gateway Info
+  razorpaySubscriptionId String?
+  razorpayCustomerId     String?
+  
+  // Dates
+  startDate       DateTime
+  endDate         DateTime?
+  nextBillingDate DateTime
+  
+  // Features
+  featuresEnabled String[]
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  @@map("subscriptions")
+}
+
+// Billing Information Model
+model BillingInfo {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Payment Method
+  paymentMethod   PaymentMethod
+  
+  // Card Details (encrypted)
+  cardLast4       String?
+  cardBrand       String?
+  cardExpMonth    Int?
+  cardExpYear     Int?
+  
+  // UPI Details
+  upiId           String?
+  
+  // Bank Details
+  bankName        String?
+  accountLast4    String?
+  
+  // Razorpay Token
+  razorpayTokenId String?
+  
+  isDefault       Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("billing_info")
+}
+
+// Notification Model
+model Notification {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type        NotificationType
+  title       String
+  message     String
+  data        Json?             // Additional metadata
+  
+  read        Boolean           @default(false)
+  readAt      DateTime?
+  
+  createdAt   DateTime          @default(now())
+  
+  @@map("notifications")
+}
+
+// Activity Log Model
+model ActivityLog {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  action      String     // login, investment, profile_update, etc.
+  description String
+  metadata    Json?      // Additional context
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime   @default(now())
+  
+  @@map("activity_logs")
+}
+
+// Login History Model
+model LoginHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  ipAddress   String
+  userAgent   String
+  location    String?  // City, Country
+  device      String?  // Mobile, Desktop, Tablet
+  
+  loginAt     DateTime @default(now())
+  logoutAt    DateTime?
+  
+  @@map("login_history")
+}
+
+// Enums
+enum KYCStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum DocumentType {
+  AADHAAR
+  PAN
+  PASSPORT
+  DRIVING_LICENSE
+  VOTER_ID
+  BANK_STATEMENT
+  INCOME_PROOF
+  ADDRESS_PROOF
+}
+
+enum AccreditationLevel {
+  RETAIL
+  HNI
+  QUALIFIED_INSTITUTIONAL
+  ANGEL
+  VC_FUND
+}
+
+enum RiskProfile {
+  CONSERVATIVE
+  MODERATE
+  AGGRESSIVE
+  VERY_AGGRESSIVE
+}
+
+enum BusinessType {
+  MICRO
+  SMALL
+  MEDIUM
+  STARTUP
+  ESTABLISHED
+}
+
+enum BusinessCategory {
+  TECHNOLOGY
+  MANUFACTURING
+  HEALTHCARE
+  FINTECH
+  ECOMMERCE
+  EDTECH
+  AGRITECH
+  FOOD_BEVERAGE
+  TEXTILE
+  AUTOMOTIVE
+  RENEWABLE_ENERGY
+  REAL_ESTATE
+  LOGISTICS
+  RETAIL
+  SERVICES
+  OTHER
+}
+
+enum FundingStage {
+  IDEATION
+  PROTOTYPE
+  EARLY_STAGE
+  GROWTH_STAGE
+  EXPANSION
+  MATURE
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  SUSPENDED
+}
+
+enum ListingStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  LIVE
+  PAUSED
+  REJECTED
+  DELISTED
+}
+
+enum InvestmentType {
+  EQUITY
+  DEBT
+  CONVERTIBLE
+  SAFE
+  REVENUE_SHARE
+}
+
+enum InvestmentStatus {
+  PENDING
+  APPROVED
+  FUNDED
+  ACTIVE
+  MATURED
+  EXITED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum RoundType {
+  PRE_SEED
+  SEED
+  SERIES_A
+  SERIES_B
+  SERIES_C
+  BRIDGE
+  DEBT
+  REVENUE_BASED
+}
+
+enum RoundStatus {
+  UPCOMING
+  LIVE
+  CLOSED
+  CANCELLED
+  OVERSUBSCRIBED
+}
+
+enum TransactionType {
+  INVESTMENT
+  DIVIDEND
+  INTEREST
+  CAPITAL_GAIN
+  FEES
+  REFUND
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PREMIUM
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  PAUSED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum PaymentMethod {
+  CARD
+  UPI
+  NET_BANKING
+  WALLET
+  BANK_TRANSFER
+}
+
+enum NotificationType {
+  INVESTMENT_UPDATE
+  PORTFOLIO_ALERT
+  PAYMENT_REMINDER
+  KYC_STATUS
+  NEW_OPPORTUNITY
+  MARKET_UPDATE
+  SYSTEM_NOTIFICATION
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+  INVESTORS_ONLY
+}
