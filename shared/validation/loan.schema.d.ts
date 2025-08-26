@@ -37,3 +37,4 @@ export declare const loanApplicationSchema: z.ZodObject<{
 }>;
 export type LoanCtaInput = z.infer<typeof loanCtaSchema>;
 export type LoanApplicationInput = z.infer<typeof loanApplicationSchema>;
+//# sourceMappingURL=loan.schema.d.ts.map

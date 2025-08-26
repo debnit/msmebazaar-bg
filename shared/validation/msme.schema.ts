@@ -7,4 +7,7 @@ export const msmeSchema = z.object({
   address: z.string().optional()
 });
 
+// Create should not require ownerId; it will be injected from session in the controller
+export const msmeCreateSchema = msmeSchema.omit({ ownerId: true });
+
 export const msmeUpdateSchema = msmeSchema.partial();

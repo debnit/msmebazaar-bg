@@ -40,3 +40,4 @@ export declare const valuationRequestSchema: z.ZodObject<{
     };
 }>;
 export type ValuationRequestInput = z.infer<typeof valuationRequestSchema>;
+//# sourceMappingURL=valuation.schema.d.ts.map

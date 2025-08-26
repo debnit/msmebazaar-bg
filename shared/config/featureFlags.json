@@ -76,5 +76,14 @@
     "rolesEnabled": ["admin", "developer"],
     "accessLevel": "READ",
     "rolloutPercentage": 10
+  },
+  "PAYMENTS": {
+    "label": "Payments",
+    "description": "Enable payments API access via gateway",
+    "enabled": true,
+    "proOnly": false,
+    "rolesEnabled": ["buyer", "seller", "msmeOwner", "investor", "agent"],
+    "accessLevel": "READ",
+    "rolloutPercentage": 100
   }
 }

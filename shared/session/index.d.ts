@@ -15,3 +15,4 @@ export declare function getTokenFromRequest(req: Request | {
     headers?: Record<string, string>;
 }, opts?: SessionOptions): string | null;
 export declare function getSessionUserFromRequest(req: Request | any, secret: string, opts?: SessionOptions): SessionUser | null;
+//# sourceMappingURL=index.d.ts.map

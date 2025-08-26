@@ -12,3 +12,4 @@ export declare const transactionMatchSchema: z.ZodObject<{
     transaction1: string;
     transaction2: string;
 }>;
+//# sourceMappingURL=transactionMatching.schema.d.ts.map

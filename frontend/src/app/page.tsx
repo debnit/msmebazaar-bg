@@ -21,45 +21,18 @@ import {
   Clock,
   Award,
   MessageCircle,
+  User,
+  Handshake,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { EnquiryForm } from "@/components/enquiry-form";
+import Navbar from "@/components/navbar/navbar";
 
 export default function MSMEBazaarLanding() {
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="px-4 lg:px-6 h-16 flex items-center border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 sticky top-0 z-50">
-        <Link className="flex items-center justify-center" href="/">
-          <Building2 className="h-8 w-8 text-blue-600" />
-          <span className="ml-2 text-2xl font-bold text-gray-900">MSMEBazaar</span>
-        </Link>
-        <nav className="ml-auto flex items-center gap-4 sm:gap-6">
-          <Link className="text-sm font-medium hover:text-blue-600 transition-colors" href="#features">
-            Services
-          </Link>
-          <Link className="text-sm font-medium hover:text-blue-600 transition-colors" href="#testimonials">
-            Reviews
-          </Link>
-          <Link className="text-sm font-medium hover:text-blue-600 transition-colors" href="#pricing">
-            Pricing
-          </Link>
-          <Link className="text-sm font-medium hover:text-blue-600 transition-colors" href="#contact">
-            Contact
-          </Link>
-          {/* Login/Register Buttons */}
-          <Link href="/login">
-            <Button variant="outline" size="sm" className="ml-4">
-              Login
-            </Button>
-          </Link>
-          <Link href="/register">
-            <Button size="sm" className="ml-2 bg-blue-600 hover:bg-blue-700">
-              Register
-            </Button>
-          </Link>
-        </nav>
-      </header>
+      <Navbar />
 
       <main className="flex-1">
         {/* Hero Section */}
@@ -80,7 +53,7 @@ export default function MSMEBazaarLanding() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700">
+                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700" onClick={() => window.location.href = "/onboarding"}>
                     Get Started for ₹99
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -116,8 +89,151 @@ export default function MSMEBazaarLanding() {
           </div>
         </section>
 
+        {/* Platform Overview Section */}
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-white">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Choose Your Platform</h2>
+                <p className="max-w-[900px] text-gray-600 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Access specialized platforms designed for your role in the MSME ecosystem.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-start gap-6 py-12 lg:grid-cols-2 lg:gap-12">
+              <Link href="/buyer/free" className="block">
+                <Card className="group hover:shadow-lg transition-shadow cursor-pointer border-blue-200 hover:border-blue-300">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <User className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <CardTitle>Buyer Platform</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-base">
+                      Browse MSME listings, connect with sellers, and find the perfect business opportunity.
+                    </CardDescription>
+                    <ul className="mt-4 space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Browse MSME listings
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Connect with sellers
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Advanced search (Pro)
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/seller/free" className="block">
+                <Card className="group hover:shadow-lg transition-shadow cursor-pointer border-green-200 hover:border-green-300">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <Building2 className="h-6 w-6 text-green-600" />
+                      </div>
+                      <CardTitle>Seller Platform</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-base">
+                      List your MSME, manage inquiries, and connect with potential buyers and investors.
+                    </CardDescription>
+                    <ul className="mt-4 space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Create MSME listings
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Manage inquiries
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Featured boost (Pro)
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/agent/free" className="block">
+                <Card className="group hover:shadow-lg transition-shadow cursor-pointer border-purple-200 hover:border-purple-300">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <Handshake className="h-6 w-6 text-purple-600" />
+                      </div>
+                      <CardTitle>Agent Platform</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-base">
+                      Facilitate deals between buyers and sellers, track commissions, and manage your pipeline.
+                    </CardDescription>
+                    <ul className="mt-4 space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Manage deals
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Track commissions
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        CRM dashboard (Pro)
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </Link>
+
+              <Link href="/investor/free" className="block">
+                <Card className="group hover:shadow-lg transition-shadow cursor-pointer border-orange-200 hover:border-orange-300">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <TrendingUp className="h-6 w-6 text-orange-600" />
+                      </div>
+                      <CardTitle>Investor Platform</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-base">
+                      Discover investment opportunities, manage your portfolio, and connect with MSME owners.
+                    </CardDescription>
+                    <ul className="mt-4 space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Browse opportunities
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Portfolio management
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Early access (Pro)
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* Features Section */}
-        <section id="features" className="w-full py-12 md:py-24 lg:py-32">
+        <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-gray-50">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
@@ -129,146 +245,142 @@ export default function MSMEBazaarLanding() {
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-6 py-12 lg:grid-cols-2 lg:gap-12">
               <Link href="/features/business-loans" className="block">
-
-                  <Card className="group hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                          <DollarSign className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <CardTitle>Business Loans</CardTitle>
+                <Card className="group hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <DollarSign className="h-6 w-6 text-blue-600" />
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-base">
-                        Access quick and affordable business loans with minimal documentation. Get funding for
-                        expansion, inventory, or working capital needs.
-                      </CardDescription>
-                      <ul className="mt-4 space-y-2 text-sm">
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Loans up to ₹50 lakhs
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Quick approval process
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Competitive interest rates
-                        </li>
-                      </ul>
-                    </CardContent>
-                  </Card>
+                      <CardTitle>Business Loans</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-base">
+                      Access quick and affordable business loans with minimal documentation. Get funding for
+                      expansion, inventory, or working capital needs.
+                    </CardDescription>
+                    <ul className="mt-4 space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Loans up to ₹50 lakhs
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Quick approval process
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Competitive interest rates
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
               </Link>
 
               <Link href="/features/business-valuation" className="block">
-                
-                  <Card className="group hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <TrendingUp className="h-6 w-6 text-green-600" />
-                        </div>
-                        <CardTitle>Business Valuation</CardTitle>
+                <Card className="group hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <TrendingUp className="h-6 w-6 text-green-600" />
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-base">
-                        Get accurate business valuations for investment, sale, or strategic planning. Professional
-                        reports by certified valuers.
-                      </CardDescription>
-                      <ul className="mt-4 space-y-2 text-sm">
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Certified valuation reports
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Multiple valuation methods
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Investment-ready documents
-                        </li>
-                      </ul>
-                    </CardContent>
-                  </Card>
+                      <CardTitle>Business Valuation</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-base">
+                      Get accurate business valuations for investment, sale, or strategic planning. Professional
+                      reports by certified valuers.
+                    </CardDescription>
+                    <ul className="mt-4 space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Certified valuation reports
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Multiple valuation methods
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Investment-ready documents
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
               </Link>
 
               <Link href="/features/exit-strategy" className="block">
-                
-                  <Card className="group hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                          <Award className="h-6 w-6 text-purple-600" />
-                        </div>
-                        <CardTitle>Exit Strategy</CardTitle>
+                <Card className="group hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <Award className="h-6 w-6 text-purple-600" />
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-base">
-                        Plan your business exit with expert guidance. Whether selling to competitors, investors, or
-                        going public, we help maximize your returns.
-                      </CardDescription>
-                      <ul className="mt-4 space-y-2 text-sm">
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Strategic exit planning
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Buyer identification
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Deal negotiation support
-                        </li>
-                      </ul>
-                    </CardContent>
-                  </Card>
+                      <CardTitle>Exit Strategy</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-base">
+                      Plan your business exit with expert guidance. Whether selling to competitors, investors, or
+                      going public, we help maximize your returns.
+                    </CardDescription>
+                    <ul className="mt-4 space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Strategic exit planning
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Buyer identification
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Deal negotiation support
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
               </Link>
 
               <Link href="/features/market-linkage" className="block">
-                
-                  <Card className="group hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-orange-100 rounded-lg">
-                          <Users className="h-6 w-6 text-orange-600" />
-                        </div>
-                        <CardTitle>Market Linkage</CardTitle>
+                <Card className="group hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-orange-100 rounded-lg">
+                        <Users className="h-6 w-6 text-orange-600" />
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-base">
-                        Connect with suppliers, distributors, and customers. Expand your market reach through our
-                        extensive business network.
-                      </CardDescription>
-                      <ul className="mt-4 space-y-2 text-sm">
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Verified business partners
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          Market expansion support
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                          B2B networking events
-                        </li>
-                      </ul>
-                    </CardContent>
-                  </Card>
+                      <CardTitle>Market Linkage</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="text-base">
+                      Connect with suppliers, distributors, and customers. Expand your market reach through our
+                      extensive business network.
+                    </CardDescription>
+                    <ul className="mt-4 space-y-2 text-sm">
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Verified business partners
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        Market expansion support
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                        B2B networking events
+                      </li>
+                    </ul>
+                  </CardContent>
+                </Card>
               </Link>
             </div>
           </div>
         </section>
 
         {/* Testimonials Section */}
-        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-gray-50">
+        <section id="testimonials" className="w-full py-12 md:py-24 lg:py-32 bg-white">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
@@ -349,7 +461,7 @@ export default function MSMEBazaarLanding() {
         </section>
 
         {/* Pricing Section */}
-        <section id="pricing" className="w-full py-12 md:py-24 lg:py-32">
+        <section id="pricing" className="w-full py-12 md:py-24 lg:py-32 bg-gray-50">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
@@ -402,7 +514,7 @@ export default function MSMEBazaarLanding() {
                     </div>
                   </div>
                   <div className="pt-4">
-                    <Button className="w-full bg-blue-600 hover:bg-blue-700" size="lg">
+                    <Button className="w-full bg-blue-600 hover:bg-blue-700" size="lg" onClick={() => window.location.href = "/onboarding"}>
                       Get Started Now
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -447,7 +559,7 @@ export default function MSMEBazaarLanding() {
         </section>
 
         {/* Enquiry Form Section */}
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-50">
+        <section className="w-full py-12 md:py-24 lg:py-32 bg-white">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
               <div className="space-y-2">
@@ -489,37 +601,37 @@ export default function MSMEBazaarLanding() {
             </div>
 
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold">Services</h4>
+              <h4 className="text-sm font-semibold">Platforms</h4>
               <div className="space-y-2 text-sm">
-                <Link href="#" className="block text-gray-600 hover:text-blue-600">
-                  Business Loans
+                <Link href="/buyer/free" className="block text-gray-600 hover:text-blue-600">
+                  Buyer Platform
                 </Link>
-                <Link href="#" className="block text-gray-600 hover:text-blue-600">
-                  Valuation
+                <Link href="/seller/free" className="block text-gray-600 hover:text-blue-600">
+                  Seller Platform
                 </Link>
-                <Link href="#" className="block text-gray-600 hover:text-blue-600">
-                  Exit Strategy
+                <Link href="/agent/free" className="block text-gray-600 hover:text-blue-600">
+                  Agent Platform
                 </Link>
-                <Link href="#" className="block text-gray-600 hover:text-blue-600">
-                  Market Linkage
+                <Link href="/investor/free" className="block text-gray-600 hover:text-blue-600">
+                  Investor Platform
                 </Link>
               </div>
             </div>
 
             <div className="space-y-4">
-              <h4 className="text-sm font-semibold">Company</h4>
+              <h4 className="text-sm font-semibold">Services</h4>
               <div className="space-y-2 text-sm">
-                <Link href="#" className="block text-gray-600 hover:text-blue-600">
-                  About Us
+                <Link href="/business-loans" className="block text-gray-600 hover:text-blue-600">
+                  Business Loans
                 </Link>
-                <Link href="#" className="block text-gray-600 hover:text-blue-600">
-                  Careers
+                <Link href="/business-valuation" className="block text-gray-600 hover:text-blue-600">
+                  Valuation
                 </Link>
-                <Link href="#" className="block text-gray-600 hover:text-blue-600">
-                  Blog
+                <Link href="/exit-strategy" className="block text-gray-600 hover:text-blue-600">
+                  Exit Strategy
                 </Link>
-                <Link href="#" className="block text-gray-600 hover:text-blue-600">
-                  Press
+                <Link href="/market-linkage" className="block text-gray-600 hover:text-blue-600">
+                  Market Linkage
                 </Link>
               </div>
             </div>

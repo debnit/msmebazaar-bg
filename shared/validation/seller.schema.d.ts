@@ -9,3 +9,4 @@ export declare const sellerSchema: z.ZodObject<{
     userId: string;
     productCatalog?: string[] | undefined;
 }>;
+//# sourceMappingURL=seller.schema.d.ts.map

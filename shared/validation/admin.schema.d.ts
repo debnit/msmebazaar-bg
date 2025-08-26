@@ -12,3 +12,4 @@ export declare const adminCreateSchema: z.ZodObject<{
     email: string;
     password: string;
 }>;
+//# sourceMappingURL=admin.schema.d.ts.map

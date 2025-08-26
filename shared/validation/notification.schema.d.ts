@@ -12,3 +12,4 @@ export declare const notificationSchema: z.ZodObject<{
     type: string;
     read?: boolean | undefined;
 }>;
+//# sourceMappingURL=notification.schema.d.ts.map

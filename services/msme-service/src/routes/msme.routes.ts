@@ -2,18 +2,18 @@ import { Router } from "express";
 import requireAuth from "../middlewares/requireAuth";
 import { validateRequest } from "../middlewares/validateRequest";
 import * as controller from "../controllers/msme.controller";
-import { msmeSchema, msmeUpdateSchema } from "../../../../shared/validation/msme.schema";
+import { msmeCreateSchema, msmeUpdateSchema } from "../../../../shared/validation/msme.schema";
 
 const router = Router();
 router.use(requireAuth);
 
 // Create MSME
-router.post("/", validateRequest(msmeSchema), controller.createMsme);
+router.post("/", validateRequest(msmeCreateSchema), controller.createMsme);
 
 // Get MSME by id
 router.get("/:id", controller.getMsme);
 
-// Get all MSMEs for owner
+// Get all MSMEs for owner (supports /owner/me)
 router.get("/owner/:ownerId", controller.getMsmesByOwner);
 
 // Update MSME by id

@@ -9,3 +9,4 @@ export declare const agentSchema: z.ZodObject<{
     userId: string;
     region: string;
 }>;
+//# sourceMappingURL=agent.schema.d.ts.map

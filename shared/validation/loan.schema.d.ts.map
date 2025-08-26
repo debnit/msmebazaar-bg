@@ -1,0 +1,1 @@
+{"version":3,"file":"loan.schema.d.ts","sourceRoot":"","sources":["loan.schema.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,CAAC,EAAE,MAAM,KAAK,CAAC;AAExB,eAAO,MAAM,aAAa;;;;;;;;;;;;;;;EAKxB,CAAC;AAEH,eAAO,MAAM,qBAAqB;;;;;;;;;;;;;;;;;;;EAEhC,CAAC;AAEH,MAAM,MAAM,YAAY,GAAG,CAAC,CAAC,KAAK,CAAC,OAAO,aAAa,CAAC,CAAC;AACzD,MAAM,MAAM,oBAAoB,GAAG,CAAC,CAAC,KAAK,CAAC,OAAO,qBAAqB,CAAC,CAAC"}

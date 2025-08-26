@@ -27,8 +27,9 @@ export const env: EnvConfig = {
   dbUrl: process.env.DATABASE_URL || "",
   jwtSecret: process.env.JWT_SECRET || "",
   razorpay: {
-    keyId: process.env.RAZORPAY_KEY_ID || "",
+    keyId: process.env.RAZORPAY_KEY_ID || "your_key_id",
     keySecret: process.env.RAZORPAY_KEY_SECRET || "",
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || "",
   },
   kafkaBrokers: (process.env.KAFKA_BROKERS || "localhost:9092")
     .split(",")

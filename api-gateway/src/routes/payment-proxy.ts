@@ -4,7 +4,7 @@ import { createProxyMiddleware } from "http-proxy-middleware";
 import { requireAuth } from "../middlewares/auth";
 import { requireFeature } from "../middlewares/requireFeature";
 
-import { Feature } from "../../../shared/config/featureFlagTypes";
+import { Feature } from "@shared/config/featureFlagTypes";
 
 const router = Router();
 

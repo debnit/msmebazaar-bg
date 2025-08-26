@@ -11,6 +11,11 @@ app.use(cors());
 // API Route
 app.use("/msme", msmeRoutes);
 
-app.listen(Config.port, () => {
-  logger.info(`msme-service running on port ${Config.port}`);
-});
+// Start server only when not running tests
+if (process.env.NODE_ENV !== "test") {
+  app.listen(Config.port, () => {
+    logger.info(`msme-service running on port ${Config.port}`);
+  });
+}
+
+export default app;

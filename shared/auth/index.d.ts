@@ -20,3 +20,4 @@ export declare function getSessionUser(req: Request): SessionUser | null;
 export declare function jwtMw(secret: string, rejectOnInvalid?: boolean): (req: Request & {
     user?: SessionUser;
 }, res: Response, next: NextFunction) => void | Response<any, Record<string, any>>;
+//# sourceMappingURL=index.d.ts.map

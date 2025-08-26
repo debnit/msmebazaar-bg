@@ -13,7 +13,7 @@ export const servicesConfig: Record<string, ServiceConfig> = {
   valuation: { url: process.env.VALUATION_SERVICE_URL || "http://localhost:8003", requiresAuth: true },
   matchmaking: { url: process.env.MATCHMAKING_SERVICE_URL || "http://localhost:8004", requiresAuth: true },
   notification: { url: process.env.NOTIFICATION_SERVICE_URL || "http://localhost:8006", requiresAuth: true },
-  admin: { url: process.env.ADMIN_SERVICE_URL || "http://localhost:8005", requiresAuth: true },
+  admin: { url: process.env.ADMIN_SERVICE_URL || "http://localhost:8016", requiresAuth: true },
   compliance: { url: process.env.COMPLIANCE_SERVICE_URL || "http://localhost:8010", requiresAuth: true },
   eaasservice: { url: process.env.EAAS_SERVICE_URL || "http://localhost:8011", requiresAuth: true },
   gamificationservice: { url: process.env.GAMIFICATION_SERVICE_URL || "http://localhost:8012", requiresAuth: true },
@@ -24,9 +24,18 @@ export const servicesConfig: Record<string, ServiceConfig> = {
   paymentservice: { url: process.env.PAYMENT_SERVICE_URL || "http://localhost:8017", requiresAuth: true },
   recommendationservice: { url: process.env.RECOMMENDATION_SERVICE_URL || "http://localhost:8018", requiresAuth: true },
   searchmatchmakingservice: { url: process.env.SEARCH_MATCHMAKING_SERVICE_URL || "http://localhost:8019", requiresAuth: true },
-  sellerservice: { url: process.env.SELLER_SERVICE_URL || "http://localhost:8020", requiresAuth: true },
+  sellerservice: { url: process.env.SELLER_SERVICE_URL || "http://localhost:8014", requiresAuth: true },
   transactionmatchingservice: { url: process.env.TRANSACTION_MATCHING_SERVICE_URL || "http://localhost:8021", requiresAuth: true },
-  userprofileservice: { url: process.env.USER_PROFILE_SERVICE_URL || "http://localhost:8022", requiresAuth: true }
+  userprofileservice: { url: process.env.USER_PROFILE_SERVICE_URL || "http://localhost:8022", requiresAuth: true },
+  
+  // Refactored services with updated ports
+  buyer: { url: process.env.BUYER_SERVICE_URL || "http://localhost:8001", requiresAuth: true },
+  seller: { url: process.env.SELLER_SERVICE_URL || "http://localhost:8014", requiresAuth: true },
+  superadmin: { url: process.env.SUPERADMIN_SERVICE_URL || "http://localhost:8017", requiresAuth: true },
+  investor: { url: process.env.INVESTOR_SERVICE_URL || "http://localhost:8018", requiresAuth: true },
+  agent: { url: process.env.AGENT_SERVICE_URL || "http://localhost:8015", requiresAuth: true },
+  loan: { url: process.env.LOAN_SERVICE_URL || "http://localhost:8013", requiresAuth: true },
+  payment: { url: process.env.PAYMENT_SERVICE_URL || "http://localhost:8017", requiresAuth: true }
 } as const;
 
 export type ServiceName = keyof typeof servicesConfig;

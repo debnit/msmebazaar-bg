@@ -1,6 +1,7 @@
 {
-  "name": "@your-org/shared",
+  "name": "@msmebazaar/shared",
   "version": "1.0.0",
+  "description": "Shared utilities, types, and configurations for MSMEBazaar platform",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -10,18 +11,19 @@
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
-    "prepare": "npm run build"
+    "test": "jest",
+    "prepare": "npm run build",
+    "dev": "tsc --watch"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.0"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.0",
-    "@types/node": "^20.4.2",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.50.0",
-    "typescript": "^5.9.2"
+    "typescript": "^4.9.5"
   },
   "engines": {
     "node": ">=18"

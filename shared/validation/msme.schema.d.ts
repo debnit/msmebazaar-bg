@@ -31,3 +31,4 @@ export declare const msmeUpdateSchema: z.ZodObject<{
     gstNumber?: string | undefined;
     businessName?: string | undefined;
 }>;
+//# sourceMappingURL=msme.schema.d.ts.map

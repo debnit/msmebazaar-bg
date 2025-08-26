@@ -9,3 +9,4 @@ export declare const buyerSchema: z.ZodObject<{
     userId: string;
     preference: Record<string, any>;
 }>;
+//# sourceMappingURL=buyer.schema.d.ts.map

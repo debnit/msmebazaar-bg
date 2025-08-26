@@ -120,6 +120,19 @@ export default function OnboardingPage() {
     }))
   }
 
+  async function submitKyc() {
+    const { panNumber, gstNumber, panDocument, gstDocument } = data;
+    if (!panNumber || !panDocument) return false;
+    try {
+      const { kycApi } = await import("@/services/kyc.api");
+      const resp = await kycApi.uploadKyc({ panNumber, gstNumber, panDocument, gstDocument: gstDocument || undefined });
+      return !!resp.success;
+    } catch (e) {
+      console.error("KYC upload failed", e);
+      return false;
+    }
+  }
+
   // New callback to advance step on successful payment
   const handlePaymentSuccess = () => {
     setCurrentStep('success')
@@ -201,14 +214,144 @@ export default function OnboardingPage() {
         {/* Step 2 */}
         {currentStep === 2 && (
           <Card className="shadow-lg border-0">
-          {/* ...existing KYC form, file uploads similar to your code... */}
+            <CardHeader>
+              <CardTitle className="text-2xl">KYC Details</CardTitle>
+              <CardDescription>Provide your PAN/GST details to proceed</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="panNumber">PAN Number *</Label>
+                  <Input
+                    id="panNumber"
+                    placeholder="ABCDE1234F"
+                    value={data.panNumber}
+                    onChange={(e) => setData({ ...data, panNumber: e.target.value.toUpperCase() })}
+                    className="h-11"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gstNumber">GST Number</Label>
+                  <Input
+                    id="gstNumber"
+                    placeholder="22ABCDE1234F1Z5"
+                    value={data.gstNumber}
+                    onChange={(e) => setData({ ...data, gstNumber: e.target.value.toUpperCase() })}
+                    className="h-11"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="panDocument">Upload PAN Document *</Label>
+                  <Input
+                    id="panDocument"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFileUpload('pan', f);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gstDocument">Upload GST Document (optional)</Label>
+                  <Input
+                    id="gstDocument"
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFileUpload('gst', f);
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={handleBack}>
+                  <ArrowLeft className="mr-2" /> Back
+                </Button>
+                <Button
+                  className="bg-blue-600"
+                  onClick={async () => { setIsLoading(true); const ok = await submitKyc(); setIsLoading(false); if (ok) handleNext(); }}
+                  disabled={!data.panNumber || !data.panDocument || isLoading}
+                >
+                  {isLoading ? 'Saving KYC...' : 'Continue'} <ArrowRight className="ml-2" />
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         )}
 
         {/* Step 3 */}
         {currentStep === 3 && (
           <Card className="shadow-lg border-0">
-          {/* ...existing Goals selection UI... */}
+            <CardHeader>
+              <CardTitle className="text-2xl">What is your primary goal?</CardTitle>
+              <CardDescription>Select your main objective and optional secondary goals</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4">
+                <div className="grid md:grid-cols-3 gap-4">
+                  {goals.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setData({ ...data, primaryGoal: g.id })}
+                      className={`text-left p-4 rounded border transition ${
+                        data.primaryGoal === g.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className={`inline-flex p-2 rounded ${g.color} mb-2`}>
+                        <g.icon className="h-5 w-5" />
+                      </div>
+                      <div className="font-semibold">{g.title}</div>
+                      <div className="text-sm text-gray-600">{g.description}</div>
+                    </button>
+                  ))}
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Secondary Goals (optional)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {goals.map((g) => {
+                      const active = data.secondaryGoals.includes(g.id);
+                      return (
+                        <button
+                          key={`sec-${g.id}`}
+                          type="button"
+                          onClick={() => {
+                            setData((prev) => {
+                              const set = new Set(prev.secondaryGoals);
+                              if (set.has(g.id)) set.delete(g.id); else set.add(g.id);
+                              return { ...prev, secondaryGoals: Array.from(set) };
+                            });
+                          }}
+                          className={`px-3 py-1 rounded-full text-sm border ${active ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200'}`}
+                        >
+                          {g.title}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={handleBack}>
+                  <ArrowLeft className="mr-2" /> Back
+                </Button>
+                <Button
+                  className="bg-blue-600"
+                  onClick={handleNext}
+                  disabled={!data.primaryGoal || isLoading}
+                >
+                  {isLoading ? 'Processing...' : 'Proceed to Payment'} <ArrowRight className="ml-2" />
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         )}
 

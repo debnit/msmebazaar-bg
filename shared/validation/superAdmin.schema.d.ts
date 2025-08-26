@@ -4,11 +4,12 @@ export declare const superAdminCreateSchema: z.ZodObject<{
     password: z.ZodString;
     role: z.ZodLiteral<"super_admin">;
 }, "strip", z.ZodTypeAny, {
+    role: "super_admin";
     email: string;
     password: string;
-    role: "super_admin";
 }, {
+    role: "super_admin";
     email: string;
     password: string;
-    role: "super_admin";
 }>;
+//# sourceMappingURL=superAdmin.schema.d.ts.map

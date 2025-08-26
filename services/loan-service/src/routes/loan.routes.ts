@@ -1,14 +1,33 @@
-import { Router } from "express";
-import * as controller from "../controllers/loan.controller";
-import { validateRequest } from "../middlewares/validateRequest";
-import requireAuth from "../middlewares/requireAuth";
-import { loanCtaSchema, loanApplicationSchema } from "@shared/validation";
+import { Router } from 'express';
+import * as loanController from '../controllers/loan.controller';
+import { jwtMw } from '@shared/auth';
+import { requireRole } from '@shared/middleware/auth';
+import { UserRole } from '@shared/types/feature';
+import { addUserCapabilities } from '@shared/middleware/featureGate';
 
 const router = Router();
-router.use(requireAuth);
 
-router.post("/cta", validateRequest(loanCtaSchema), controller.loanCta);
-router.post("/applications", validateRequest(loanApplicationSchema), controller.createLoan);
-router.get("/applications", controller.listLoans); // fetch all for logged-in user
+// Apply authentication middleware to all routes
+router.use(jwtMw(process.env.JWT_SECRET || 'default_secret', true));
+
+// Apply role-based access control for MSME Owners
+router.use(requireRole(UserRole.MSME_OWNER));
+
+// Add user capabilities to request
+router.use(addUserCapabilities);
+
+// Loan application routes
+router.post('/applications', loanController.createLoanApplication);
+router.get('/applications', loanController.getUserLoanApplications);
+router.get('/applications/:applicationId', loanController.getLoanApplicationDetails);
+router.post('/applications/:applicationId/submit', loanController.submitLoanApplication);
+router.post('/applications/:applicationId/documents', loanController.uploadDocuments);
+
+// Loan offers and valuation routes (Pro features)
+router.get('/applications/:applicationId/offers', loanController.getLoanOffers);
+router.get('/business-valuation', loanController.getBusinessValuation);
+
+// Loan eligibility calculator (basic feature)
+router.post('/eligibility', loanController.calculateLoanEligibility);
 
 export default router;

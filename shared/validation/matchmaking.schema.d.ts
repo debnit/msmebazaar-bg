@@ -12,3 +12,4 @@ export declare const matchmakingRequestSchema: z.ZodObject<{
     sellerId: string;
     score?: number | undefined;
 }>;
+//# sourceMappingURL=matchmaking.schema.d.ts.map

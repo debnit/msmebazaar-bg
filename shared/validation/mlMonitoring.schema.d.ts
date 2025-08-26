@@ -7,17 +7,18 @@ export declare const mlJobEventSchema: z.ZodObject<{
     startedAt: z.ZodOptional<z.ZodString>;
     endedAt: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    service: string;
-    status: string;
     id: string;
+    status: string;
     metrics: Record<string, any>;
+    service: string;
     startedAt?: string | undefined;
     endedAt?: string | undefined;
 }, {
-    service: string;
-    status: string;
     id: string;
+    status: string;
     metrics: Record<string, any>;
+    service: string;
     startedAt?: string | undefined;
     endedAt?: string | undefined;
 }>;
+//# sourceMappingURL=mlMonitoring.schema.d.ts.map

@@ -17,13 +17,14 @@ export declare const verifyPaymentSchema: z.ZodObject<{
     razorpayOrderId: z.ZodString;
     razorpaySignature: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    razorpayOrderId: string;
     razorpayPaymentId: string;
+    razorpayOrderId: string;
     razorpaySignature: string;
 }, {
-    razorpayOrderId: string;
     razorpayPaymentId: string;
+    razorpayOrderId: string;
     razorpaySignature: string;
 }>;
 export type CreatePaymentOrderInput = z.infer<typeof createPaymentOrderSchema>;
 export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;
+//# sourceMappingURL=payments.schema.d.ts.map

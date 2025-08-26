@@ -9,3 +9,4 @@ export declare const recommendationRequestSchema: z.ZodObject<{
     limit?: number | undefined;
     filters?: Record<string, any> | undefined;
 }>;
+//# sourceMappingURL=recommendation.schema.d.ts.map

@@ -41,3 +41,4 @@ export declare const userIdParamSchema: z.ZodObject<{
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
 export type UserIdParamInput = z.infer<typeof userIdParamSchema>;
+//# sourceMappingURL=user.schema.d.ts.map

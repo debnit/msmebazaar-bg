@@ -12,3 +12,4 @@ export declare const complianceDocSchema: z.ZodObject<{
     status?: string | undefined;
     documentUrl?: string | undefined;
 }>;
+//# sourceMappingURL=compliance.schema.d.ts.map

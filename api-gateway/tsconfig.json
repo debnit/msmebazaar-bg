@@ -1,28 +1,32 @@
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2020",
+    "composite": true,
+    "target": "ES2022",
     "module": "CommonJS",
+    "lib": ["ES2022"],
     "outDir": "dist",
-    "rootDir": "../",                     
-    "baseUrl": "./",                      
-    "paths": {                           
-      "@shared/*": ["../shared/*"],       
-      "@utils/*": ["../shared/utils/*"]   
-    },
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "rootDir": ".",
+    "baseUrl": "./src",
+    "moduleResolution": "node",
+    "declaration": true,
+    "declarationMap": true,
     "sourceMap": true,
-    "resolveJsonModule": true
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["../shared/src/*"]
+    }
   },
   "include": [
-    "src/**/*.ts",
-    "../shared/**/*.ts",
-    "src/types/**/*.d.ts"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "references": [
+    { "path": "../shared" }
   ]
 }

@@ -3,9 +3,10 @@ export declare const searchRequestSchema: z.ZodObject<{
     userId: z.ZodString;
     query: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    userId: string;
     query: string;
+    userId: string;
 }, {
-    userId: string;
     query: string;
+    userId: string;
 }>;
+//# sourceMappingURL=searchMatchmaking.schema.d.ts.map

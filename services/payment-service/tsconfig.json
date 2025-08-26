@@ -1,50 +1,33 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "composite": true,
-    /* Output to dist */
-    "outDir": "./dist",
-    "rootDir": "./",
-    "baseUrl": "./",
-    "paths": {
-      "@shared/*": ["../../shared/dist/*"]
-    },
-    "target": "ES2021", /* Module + target for Node.js v18+ */
+    "target": "ES2022",
     "module": "CommonJS",
-    "moduleResolution": "Node",
-    "lib": ["ES2021"],
-    "types": ["node", "jest"],
-
-    /* Strict type-checking */
-    "strict": true,
-    "noImplicitAny": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "alwaysStrict": true,
-
-    /* Interop and JSON */
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-
-    /* Source maps for debugging */
+    "lib": ["ES2022"],
+    "outDir": "dist",
+    "rootDir": ".",
+    "baseUrl": "./src",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
     "sourceMap": true,
-
-    /* Allow decorators if needed (future RBAC/logging features) */
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-
-    /* Incremental build for faster re-builds */
-    "incremental": true,
-
-    /* Avoid compile errors with TS tooling */
-    "skipLibCheck": true
+    "paths": {
+      "@/*": ["./*"],
+      "@shared/*": ["../../shared/src/*"]
+    }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/tests"],
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
   "references": [
     { "path": "../../shared" }
-  ],
-  
+  ]
 }

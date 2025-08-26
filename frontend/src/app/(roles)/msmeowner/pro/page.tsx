@@ -4,11 +4,6 @@ import RoleGuard from "@/modules/shared/RoleGuard";
 import OwnerLoanApplications from "@/modules/msme-owner/OwnerLoanApplications";
 import OwnerBusinessTools from "@/modules/msme-owner/OwnerBusinessTools";
 
-export const metadata = {
-  title: "MSME Owner Pro Dashboard",
-  description: "Priority loan processing and advanced business tools for MSME Owners",
-};
-
 export default function MSMEOwnerProPage() {
   return (
     <RoleGuard allowedRoles={["msme_owner"]} proOnly>
