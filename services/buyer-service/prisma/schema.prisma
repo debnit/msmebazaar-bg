@@ -1,28 +1,121 @@
-model Buyer {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  name         String
-  isPro        Boolean  @default(false)
-  onboardedProAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+// Buyer Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
 
-  messages     Message[]
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Buyer {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  phone          String?
+  company        String?
+  isPro          Boolean  @default(false)
+  onboardedProAt DateTime?
+  
+  // Preferences
+  budget         Decimal? @db.Decimal(15, 2)
+  interests      String[]
+  location       String?
+  
+  // Relations
+  messages       Message[]
   recommendations Recommendation[]
+  inquiries      BuyerInquiry[]
+  orders         BuyerOrder[]
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("buyers")
 }
 
 model Message {
-  id           String   @id @default(uuid())
-  buyerId      String
-  content      String
-  createdAt    DateTime @default(now())
-  buyer        Buyer    @relation(fields: [buyerId], references: [id])
+  id        String   @id @default(cuid())
+  buyerId   String
+  content   String
+  messageType MessageType @default(GENERAL)
+  isRead    Boolean  @default(false)
+  
+  buyer     Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@map("messages")
 }
 
 model Recommendation {
-  id           String   @id @default(uuid())
-  buyerId      String
-  content      String
-  createdAt    DateTime @default(now())
-  buyer        Buyer    @relation(fields: [buyerId], references: [id])
+  id          String   @id @default(cuid())
+  buyerId     String
+  listingId   String?
+  title       String
+  content     String
+  score       Decimal? @db.Decimal(3, 2)
+  isViewed    Boolean  @default(false)
+  
+  buyer       Buyer    @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+
+  @@map("recommendations")
+}
+
+model BuyerInquiry {
+  id          String       @id @default(cuid())
+  buyerId     String
+  listingId   String
+  sellerId    String
+  message     String
+  status      InquiryStatus @default(PENDING)
+  
+  buyer       Buyer        @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("buyer_inquiries")
+}
+
+model BuyerOrder {
+  id          String      @id @default(cuid())
+  buyerId     String
+  sellerId    String
+  listingId   String
+  amount      Decimal     @db.Decimal(15, 2)
+  quantity    Int         @default(1)
+  status      OrderStatus @default(PENDING)
+  
+  buyer       Buyer       @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("buyer_orders")
+}
+
+enum MessageType {
+  GENERAL
+  INQUIRY
+  SUPPORT
+  NOTIFICATION
+}
+
+enum InquiryStatus {
+  PENDING
+  RESPONDED
+  CLOSED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
 }

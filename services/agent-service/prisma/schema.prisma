@@ -1,1 +1,108 @@
-../../../shared/db/schema.prisma
+// Agent Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id              String       @id @default(cuid())
+  email           String       @unique
+  phone           String?      @unique
+  name            String
+  agentCode       String       @unique
+  agentType       AgentType
+  status          AgentStatus  @default(ACTIVE)
+  commissionRate  Decimal      @db.Decimal(5, 2) // Percentage
+  
+  // Profile Information
+  experience      Int?         // Years of experience
+  specialization  String[]     // Areas of expertise
+  certifications  String[]
+  
+  // Performance Metrics
+  totalClients    Int          @default(0)
+  totalSales      Decimal      @default(0) @db.Decimal(15, 2)
+  rating          Decimal?     @db.Decimal(3, 2) // 1.00 to 5.00
+  
+  // Relations
+  clients         AgentClient[]
+  commissions     Commission[]
+  activities      AgentActivity[]
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("agents")
+}
+
+model AgentClient {
+  id         String   @id @default(cuid())
+  agentId    String
+  agent      Agent    @relation(fields: [agentId], references: [id])
+  clientId   String
+  clientType ClientType
+  assignedAt DateTime @default(now())
+  status     String   @default("active")
+
+  @@unique([agentId, clientId])
+  @@map("agent_clients")
+}
+
+model Commission {
+  id            String    @id @default(cuid())
+  agentId       String
+  agent         Agent     @relation(fields: [agentId], references: [id])
+  clientId      String
+  transactionId String    @unique
+  amount        Decimal   @db.Decimal(15, 2)
+  rate          Decimal   @db.Decimal(5, 2)
+  status        CommissionStatus @default(PENDING)
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@map("commissions")
+}
+
+model AgentActivity {
+  id          String   @id @default(cuid())
+  agentId     String
+  agent       Agent    @relation(fields: [agentId], references: [id])
+  activityType String
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@map("agent_activities")
+}
+
+enum AgentType {
+  SALES
+  SUPPORT
+  RELATIONSHIP_MANAGER
+  SPECIALIST
+}
+
+enum AgentStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+enum ClientType {
+  BUYER
+  SELLER
+  INVESTOR
+  MSME
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}

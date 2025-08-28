@@ -1,10 +1,277 @@
+// Recommendation Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model UserEvent {
-  id           Int      @id @default(autoincrement())
+  id           String      @id @default(cuid())
   userId       String
-  eventType    String
-  listingId    String?
+  sessionId    String?
+  
+  // Event Details
+  eventType    EventType
+  entityId     String?     // ID of the entity (listing, business, etc.)
+  entityType   String?     // Type of entity
+  
+  // Search Context
   queryText    String?
   filters      Json?
-  ts           DateTime @default(now())
-  // Partitioning via raw SQL migrations
+  
+  // Interaction Context
+  clickPosition Int?       // Position in search results/recommendation list
+  duration     Int?        // Time spent on item (in seconds)
+  
+  // Page Context
+  pageUrl      String?
+  referrer     String?
+  
+  // Device Context
+  userAgent    String?
+  ipAddress    String?
+  
+  // Metadata
+  metadata     Json?
+  
+  createdAt    DateTime    @default(now())
+
+  @@map("user_events")
+  @@index([userId, eventType])
+  @@index([createdAt])
+}
+
+model UserProfile {
+  id                String         @id @default(cuid())
+  userId            String         @unique
+  
+  // Demographic Info
+  ageGroup          String?
+  location          String?
+  businessType      String?
+  
+  // Preferences (learned from behavior)
+  preferredCategories String[]
+  preferredPriceRange Json?
+  
+  // Behavior Patterns
+  avgSessionDuration Int?          // In minutes
+  preferredDeviceType String?
+  activeHours        Json?         // Peak activity hours
+  
+  // Engagement Metrics
+  totalEvents       Int           @default(0)
+  totalSessions     Int           @default(0)
+  lastActiveAt      DateTime?
+  
+  // Computed Scores
+  engagementScore   Decimal?      @db.Decimal(5, 2)
+  
+  // Relations
+  recommendations   Recommendation[]
+  
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@map("user_profiles")
+}
+
+model Recommendation {
+  id            String              @id @default(cuid())
+  userId        String
+  userProfile   UserProfile         @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  
+  // Recommendation Details
+  entityId      String              // ID of recommended item
+  entityType    RecommendationType
+  title         String
+  description   String?
+  imageUrl      String?
+  
+  // Scoring
+  score         Decimal             @db.Decimal(5, 4)
+  algorithm     String              // Algorithm used to generate
+  
+  // Context
+  context       RecommendationContext
+  position      Int?                // Position in recommendation list
+  
+  // Performance Tracking
+  isViewed      Boolean             @default(false)
+  isClicked     Boolean             @default(false)
+  viewedAt      DateTime?
+  clickedAt     DateTime?
+  
+  // Status
+  status        RecommendationStatus @default(ACTIVE)
+  expiresAt     DateTime?
+  
+  // Feedback
+  feedback      UserFeedback?
+  
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@map("recommendations")
+  @@index([userId, status])
+  @@index([createdAt])
+}
+
+model UserFeedback {
+  id               String         @id @default(cuid())
+  recommendationId String         @unique
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  userId           String
+  
+  // Feedback Details
+  rating           Int?           // 1-5 stars
+  feedbackType     FeedbackType
+  comment          String?
+  
+  // Context
+  reason           String?        // Why they liked/disliked
+  
+  createdAt        DateTime       @default(now())
+
+  @@map("user_feedback")
+}
+
+model ItemFeatures {
+  id           String   @id @default(cuid())
+  entityId     String   @unique
+  entityType   String
+  
+  // Feature Vector
+  features     Json     // Numerical features for ML algorithms
+  categories   String[] // Categorical features
+  tags         String[] // Tags for content-based filtering
+  
+  // Computed Metrics
+  popularity   Decimal? @db.Decimal(5, 4)
+  trendingScore Decimal? @db.Decimal(5, 4)
+  qualityScore Decimal? @db.Decimal(5, 4)
+  
+  // Update Tracking
+  lastUpdated  DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  @@map("item_features")
+}
+
+model UserSimilarity {
+  id            String   @id @default(cuid())
+  userId1       String
+  userId2       String
+  
+  // Similarity Metrics
+  similarity    Decimal  @db.Decimal(5, 4)
+  algorithm     String   // cosine, jaccard, etc.
+  
+  // Context
+  basedOn       String[] // What the similarity is based on
+  confidence    Decimal? @db.Decimal(5, 4)
+  
+  computedAt    DateTime @default(now())
+
+  @@unique([userId1, userId2, algorithm])
+  @@map("user_similarities")
+}
+
+model MLModel {
+  id           String      @id @default(cuid())
+  name         String      @unique
+  version      String
+  modelType    MLModelType
+  
+  // Model Configuration
+  parameters   Json
+  features     String[]
+  
+  // Performance Metrics
+  accuracy     Decimal?    @db.Decimal(5, 4)
+  precision    Decimal?    @db.Decimal(5, 4)
+  recall       Decimal?    @db.Decimal(5, 4)
+  
+  // Status
+  status       ModelStatus @default(TRAINING)
+  isActive     Boolean     @default(false)
+  
+  // Model Artifacts
+  modelPath    String?
+  metadata     Json?
+  
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("ml_models")
+}
+
+enum EventType {
+  VIEW
+  CLICK
+  SEARCH
+  FILTER
+  ADD_TO_CART
+  PURCHASE
+  LIKE
+  SHARE
+  CONTACT_SELLER
+  SAVE_TO_WISHLIST
+  REMOVE_FROM_WISHLIST
+  SESSION_START
+  SESSION_END
+}
+
+enum RecommendationType {
+  BUSINESS
+  LISTING
+  INVESTMENT
+  LOAN_PRODUCT
+  CATEGORY
+  SELLER
+}
+
+enum RecommendationContext {
+  HOME_PAGE
+  SEARCH_RESULTS
+  PRODUCT_PAGE
+  CATEGORY_PAGE
+  EMAIL
+  NOTIFICATION
+  PERSONALIZED_FEED
+}
+
+enum RecommendationStatus {
+  ACTIVE
+  EXPIRED
+  DISMISSED
+  HIDDEN
+}
+
+enum FeedbackType {
+  LIKE
+  DISLIKE
+  NOT_INTERESTED
+  IRRELEVANT
+  POOR_QUALITY
+  ALREADY_PURCHASED
+}
+
+enum MLModelType {
+  COLLABORATIVE_FILTERING
+  CONTENT_BASED
+  HYBRID
+  DEEP_LEARNING
+  MATRIX_FACTORIZATION
+}
+
+enum ModelStatus {
+  TRAINING
+  VALIDATING
+  DEPLOYED
+  DEPRECATED
+  FAILED
 }

@@ -1,1 +1,417 @@
-../../../shared/db/schema.prisma
+// Valuation Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model BusinessValuation {
+  id              String            @id @default(cuid())
+  businessId      String
+  
+  // Valuation Details
+  valuationMethod ValuationMethod
+  valuationAmount Decimal           @db.Decimal(15, 2)
+  currency        String            @default("INR")
+  
+  // Context
+  valuationType   ValuationType
+  purpose         ValuationPurpose
+  
+  // Valuation Date & Validity
+  valuationDate   DateTime          @default(now())
+  validUntil      DateTime
+  
+  // Methodology & Inputs
+  methodology     Json              // Detailed methodology used
+  inputData       Json              // Input data used for valuation
+  assumptions     Json              // Key assumptions made
+  
+  // Financial Metrics
+  revenue         Decimal?          @db.Decimal(15, 2)
+  ebitda          Decimal?          @db.Decimal(15, 2)
+  netIncome       Decimal?          @db.Decimal(15, 2)
+  assets          Decimal?          @db.Decimal(15, 2)
+  liabilities     Decimal?          @db.Decimal(15, 2)
+  
+  // Multiples & Ratios
+  revenueMultiple Decimal?          @db.Decimal(8, 4)
+  ebitdaMultiple  Decimal?          @db.Decimal(8, 4)
+  peRatio         Decimal?          @db.Decimal(8, 4)
+  
+  // Quality & Confidence
+  confidenceLevel Decimal           @db.Decimal(5, 2) // Percentage
+  qualityScore    Decimal?          @db.Decimal(3, 2)
+  
+  // Status & Workflow
+  status          ValuationStatus   @default(DRAFT)
+  
+  // Professional Details
+  valuedBy        String            // Valuer ID
+  reviewedBy      String?           // Reviewer ID
+  approvedBy      String?           // Approver ID
+  
+  // Reports & Documentation
+  reportUrl       String?
+  supportingDocs  String[]
+  
+  // Relations
+  comparables     ComparableCompany[]
+  adjustments     ValuationAdjustment[]
+  scenarios       ValuationScenario[]
+  
+  // Audit Trail
+  reviewNotes     String?
+  approvalNotes   String?
+  reviewedAt      DateTime?
+  approvedAt      DateTime?
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("business_valuations")
+}
+
+model ComparableCompany {
+  id            String            @id @default(cuid())
+  valuationId   String
+  valuation     BusinessValuation @relation(fields: [valuationId], references: [id], onDelete: Cascade)
+  
+  // Company Details
+  companyName   String
+  industry      String
+  sector        String?
+  country       String
+  
+  // Financial Data
+  revenue       Decimal           @db.Decimal(15, 2)
+  ebitda        Decimal?          @db.Decimal(15, 2)
+  netIncome     Decimal?          @db.Decimal(15, 2)
+  marketCap     Decimal?          @db.Decimal(15, 2)
+  
+  // Multiples
+  evRevenue     Decimal?          @db.Decimal(8, 4)
+  evEbitda      Decimal?          @db.Decimal(8, 4)
+  peRatio       Decimal?          @db.Decimal(8, 4)
+  
+  // Data Source & Quality
+  dataSource    String
+  dataDate      DateTime
+  reliability   Decimal           @db.Decimal(3, 2) // 1-5 scale
+  
+  // Similarity Score
+  similarityScore Decimal?        @db.Decimal(5, 4)
+  
+  createdAt     DateTime          @default(now())
+
+  @@map("comparable_companies")
+}
+
+model ValuationAdjustment {
+  id            String            @id @default(cuid())
+  valuationId   String
+  valuation     BusinessValuation @relation(fields: [valuationId], references: [id], onDelete: Cascade)
+  
+  // Adjustment Details
+  adjustmentType AdjustmentType
+  description   String
+  amount        Decimal           @db.Decimal(15, 2)
+  percentage    Decimal?          @db.Decimal(5, 2)
+  
+  // Rationale
+  rationale     String
+  impact        AdjustmentImpact
+  
+  // Support
+  supportingData Json?
+  
+  createdAt     DateTime          @default(now())
+
+  @@map("valuation_adjustments")
+}
+
+model ValuationScenario {
+  id            String            @id @default(cuid())
+  valuationId   String
+  valuation     BusinessValuation @relation(fields: [valuationId], references: [id], onDelete: Cascade)
+  
+  // Scenario Details
+  scenarioName  String
+  scenarioType  ScenarioType
+  description   String?
+  
+  // Assumptions
+  assumptions   Json
+  
+  // Results
+  valuationAmount Decimal         @db.Decimal(15, 2)
+  probability   Decimal?          @db.Decimal(5, 2) // Percentage
+  
+  // Key Metrics
+  keyMetrics    Json?
+  
+  createdAt     DateTime          @default(now())
+
+  @@map("valuation_scenarios")
+}
+
+model ValuationTemplate {
+  id            String              @id @default(cuid())
+  name          String              @unique
+  description   String?
+  
+  // Template Configuration
+  industry      String
+  businessType  BusinessType
+  methods       ValuationMethod[]
+  
+  // Default Parameters
+  parameters    Json
+  assumptions   Json
+  multiples     Json?
+  
+  // Quality Control
+  isActive      Boolean             @default(true)
+  version       String              @default("1.0")
+  
+  // Usage Statistics
+  usageCount    Int                 @default(0)
+  successRate   Decimal?            @db.Decimal(5, 2)
+  
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@map("valuation_templates")
+}
+
+model MarketData {
+  id            String      @id @default(cuid())
+  
+  // Data Classification
+  dataType      MarketDataType
+  industry      String
+  region        String
+  
+  // Data Points
+  metric        String
+  value         Decimal     @db.Decimal(15, 4)
+  unit          String?
+  
+  // Context
+  period        String      // Q1 2024, 2023, etc.
+  dataDate      DateTime
+  source        String
+  
+  // Quality
+  reliability   Decimal     @db.Decimal(3, 2)
+  isActive      Boolean     @default(true)
+  
+  // Metadata
+  metadata      Json?
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("market_data")
+  @@index([dataType, industry, region])
+  @@index([dataDate])
+}
+
+model ValuationRequest {
+  id              String            @id @default(cuid())
+  requesterId     String
+  requesterType   RequesterType
+  
+  // Request Details
+  businessId      String
+  requestType     RequestType
+  urgency         Urgency           @default(NORMAL)
+  purpose         ValuationPurpose
+  
+  // Requirements
+  methods         ValuationMethod[]
+  deliverables    String[]
+  deadline        DateTime?
+  
+  // Status & Assignment
+  status          RequestStatus     @default(PENDING)
+  assignedTo      String?           // Valuer ID
+  
+  // Communication
+  notes           String?
+  clientNotes     String?
+  
+  // Results
+  valuationId     String?           // Link to completed valuation
+  
+  // Dates
+  assignedAt      DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("valuation_requests")
+}
+
+model ValuerProfile {
+  id              String      @id @default(cuid())
+  userId          String      @unique
+  
+  // Professional Details
+  licenseNumber   String?     @unique
+  designation     String
+  qualifications  String[]
+  
+  // Experience
+  yearsExperience Int
+  specializations String[]
+  certifications  String[]
+  
+  // Performance Metrics
+  completedValuations Int     @default(0)
+  averageRating   Decimal?    @db.Decimal(3, 2)
+  averageTurnaround Int?      // In days
+  
+  // Availability
+  isActive        Boolean     @default(true)
+  maxConcurrentValuations Int @default(5)
+  
+  // Preferred Methods
+  preferredMethods ValuationMethod[]
+  preferredIndustries String[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("valuer_profiles")
+}
+
+enum ValuationMethod {
+  DCF
+  COMPARABLE_COMPANY
+  PRECEDENT_TRANSACTION
+  ASSET_BASED
+  EARNINGS_MULTIPLE
+  REVENUE_MULTIPLE
+  BOOK_VALUE
+  LIQUIDATION_VALUE
+  REPLACEMENT_COST
+  REAL_OPTIONS
+}
+
+enum ValuationType {
+  ENTERPRISE_VALUE
+  EQUITY_VALUE
+  ASSET_VALUE
+  LIQUIDATION_VALUE
+  GOING_CONCERN
+}
+
+enum ValuationPurpose {
+  INVESTMENT
+  ACQUISITION
+  MERGER
+  IPO
+  LOAN_SECURITY
+  INSURANCE
+  TAX_PLANNING
+  LEGAL_DISPUTE
+  INTERNAL_PLANNING
+  COMPLIANCE
+}
+
+enum ValuationStatus {
+  DRAFT
+  IN_PROGRESS
+  UNDER_REVIEW
+  APPROVED
+  PUBLISHED
+  REJECTED
+  EXPIRED
+}
+
+enum AdjustmentType {
+  CONTROL_PREMIUM
+  MINORITY_DISCOUNT
+  MARKETABILITY_DISCOUNT
+  KEY_PERSON_DISCOUNT
+  SIZE_PREMIUM
+  COUNTRY_RISK
+  LIQUIDITY_ADJUSTMENT
+  SYNERGY_VALUE
+  OTHER
+}
+
+enum AdjustmentImpact {
+  POSITIVE
+  NEGATIVE
+  NEUTRAL
+}
+
+enum ScenarioType {
+  BASE_CASE
+  OPTIMISTIC
+  PESSIMISTIC
+  STRESS_TEST
+  SENSITIVITY
+}
+
+enum BusinessType {
+  STARTUP
+  SME
+  LARGE_ENTERPRISE
+  FAMILY_BUSINESS
+  LISTED_COMPANY
+  PARTNERSHIP
+  COOPERATIVE
+}
+
+enum MarketDataType {
+  MULTIPLE
+  GROWTH_RATE
+  DISCOUNT_RATE
+  RISK_PREMIUM
+  BETA
+  INFLATION_RATE
+  INTEREST_RATE
+  EXCHANGE_RATE
+}
+
+enum RequesterType {
+  BUSINESS_OWNER
+  INVESTOR
+  BANK
+  LEGAL_FIRM
+  GOVERNMENT
+  INSURANCE_COMPANY
+  CONSULTANT
+}
+
+enum RequestType {
+  FULL_VALUATION
+  UPDATE_VALUATION
+  PEER_REVIEW
+  OPINION_OF_VALUE
+  DESKTOP_VALUATION
+}
+
+enum Urgency {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum RequestStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ON_HOLD
+}

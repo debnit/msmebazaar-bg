@@ -1,3 +1,5 @@
+import { Request, Response, NextFunction } from 'express';
+
 export function validateRequest(schema) {
   return (req, res, next) => {
     const parsed = schema.safeParse(req.body);

@@ -22,18 +22,18 @@ interface EnvConfig {
 }
 
 export const env: EnvConfig = {
-  port: Number(process.env.SERVICE_PORT || 4004),
-  nodeEnv: (process.env.NODE_ENV as any) || "development",
-  dbUrl: process.env.DATABASE_URL || "",
-  jwtSecret: process.env.JWT_SECRET || "",
+  port: Number(process.env["SERVICE_PORT"] || 8029),
+  nodeEnv: (process.env["NODE_ENV"] as any) || "development",
+  dbUrl: process.env["DATABASE_URL"] || ,
+  jwtSecret: process.env["JWT_SECRET"] || "",
   razorpay: {
-    keyId: process.env.RAZORPAY_KEY_ID || "your_key_id",
-    keySecret: process.env.RAZORPAY_KEY_SECRET || "",
-    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || "",
+    keyId: process.env["RAZORPAY_KEY_ID"] || "your_key_id",
+    keySecret: process.env["RAZORPAY_KEY_SECRET"] || "",
+    webhookSecret: process.env["RAZORPAY_WEBHOOK_SECRET"] || "",
   },
-  kafkaBrokers: (process.env.KAFKA_BROKERS || "localhost:9092")
+  kafkaBrokers: (process.env["KAFKA_BROKERS"] || "localhost:9092")
     .split(",")
     .map((broker) => broker.trim()),
-  kafkaConsumerGroupId: process.env.KAFKA_CONSUMER_GROUP_ID || "payment-service-group",
-  logLevel: (process.env.LOG_LEVEL as any) || "info",
+  kafkaConsumerGroupId: process.env["KAFKA_CONSUMER_GROUP_ID"] || "payment-service-group",
+  logLevel: (process.env["LOG_LEVEL"] as any) || "info",
 };

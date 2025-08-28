@@ -1,32 +1,101 @@
 
+// Auth Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model User {
-  id           String          @id @default(cuid())
-  email        String          @unique
-  password     String
-  name         String
-  roles        Role[]          @relation(...)
+  id            String          @id @default(cuid())
+  email         String          @unique
+  password      String
+  name          String
+  emailVerified Boolean         @default(false)
+  isActive      Boolean         @default(true)
+  lastLoginAt   DateTime?
+  
+  // Relations
+  roles         UserRole[]
   refreshTokens RefreshToken[]
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  profile       Profile?
+  sessions      Session[]
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("users")
+}
+
+model Role {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  permissions String[]
+  
+  // Relations
+  users       UserRole[]
+  
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("roles")
+}
+
+model UserRole {
+  id      String @id @default(cuid())
+  userId  String
+  roleId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  assignedAt DateTime @default(now())
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
 }
 
 model Profile {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  phone     String?
-  avatarUrl String?
-  bio       String?
-  address   String?
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  phone       String?
+  avatarUrl   String?
+  bio         String?
+  address     String?
   socialLinks Json?
-  user      User     @relation(fields: [userId], references: [id])
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("profiles")
 }
 
 model RefreshToken {
   id        String   @id @default(cuid())
   token     String   @unique
-  user      User     @relation(fields: [userId], references: [id])
   userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@map("refresh_tokens")
+}
+
+model Session {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionToken String  @unique
+  ipAddress   String?
+  userAgent   String?
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@map("sessions")
 }

@@ -1,11 +1,112 @@
+// Loan Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model LoanApplication {
-  id           String   @id @default(uuid())
-  userId       String
-  loanAmount   Float
-  purpose      String
-  tenureMonths Int
-  documents    Json?
-  status       String   @default("pending")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String         @id @default(cuid())
+  userId         String
+  
+  // Loan Details
+  loanAmount     Decimal        @db.Decimal(15, 2)
+  purpose        LoanPurpose
+  tenureMonths   Int
+  interestRate   Decimal?       @db.Decimal(5, 2)
+  
+  // Applicant Details
+  businessId     String?
+  personalIncome Decimal?       @db.Decimal(15, 2)
+  businessRevenue Decimal?      @db.Decimal(15, 2)
+  creditScore    Int?
+  
+  // Application Status
+  status         LoanStatus     @default(PENDING)
+  approvedAmount Decimal?       @db.Decimal(15, 2)
+  rejectionReason String?
+  
+  // Documents
+  documents      Json?
+  
+  // Processing
+  assignedTo     String?
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  approvedAt     DateTime?
+  
+  // Relations
+  disbursements  LoanDisbursement[]
+  repayments     LoanRepayment[]
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("loan_applications")
+}
+
+model LoanDisbursement {
+  id              String          @id @default(cuid())
+  applicationId   String
+  application     LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  amount          Decimal         @db.Decimal(15, 2)
+  disbursedAt     DateTime        @default(now())
+  transactionRef  String?
+  
+  createdAt       DateTime        @default(now())
+
+  @@map("loan_disbursements")
+}
+
+model LoanRepayment {
+  id              String          @id @default(cuid())
+  applicationId   String
+  application     LoanApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  
+  amount          Decimal         @db.Decimal(15, 2)
+  principalAmount Decimal         @db.Decimal(15, 2)
+  interestAmount  Decimal         @db.Decimal(15, 2)
+  dueDate         DateTime
+  paidAt          DateTime?
+  status          RepaymentStatus @default(PENDING)
+  
+  transactionRef  String?
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@map("loan_repayments")
+}
+
+enum LoanPurpose {
+  WORKING_CAPITAL
+  EQUIPMENT_PURCHASE
+  INVENTORY
+  EXPANSION
+  DEBT_CONSOLIDATION
+  EMERGENCY
+  OTHER
+}
+
+enum LoanStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  DISBURSED
+  ACTIVE
+  COMPLETED
+  DEFAULTED
+}
+
+enum RepaymentStatus {
+  PENDING
+  PAID
+  OVERDUE
+  PARTIAL
+  DEFAULTED
 }

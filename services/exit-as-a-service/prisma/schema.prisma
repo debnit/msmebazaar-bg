@@ -1,1 +1,194 @@
-../../../shared/db/schema.prisma
+// Exit-as-a-Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ExitOpportunity {
+  id               String         @id @default(cuid())
+  businessId       String
+  
+  // Exit Details
+  exitType         ExitType
+  targetValuation  Decimal        @db.Decimal(15, 2)
+  minimumOffer     Decimal        @db.Decimal(15, 2)
+  equityPercentage Decimal?       @db.Decimal(5, 2)
+  
+  // Status & Timeline
+  status           ExitStatus     @default(DRAFT)
+  listingDate      DateTime?
+  targetCloseDate  DateTime?
+  actualCloseDate  DateTime?
+  
+  // Documentation
+  description      String
+  terms            Json?
+  documents        Json?
+  
+  // Relations
+  bids             ExitBid[]
+  activities       ExitActivity[]
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@map("exit_opportunities")
+}
+
+model ExitBid {
+  id               String         @id @default(cuid())
+  opportunityId    String
+  opportunity      ExitOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  
+  // Bidder Information
+  bidderId         String
+  bidderType       BidderType
+  
+  // Bid Details
+  offerAmount      Decimal        @db.Decimal(15, 2)
+  equityPercentage Decimal?       @db.Decimal(5, 2)
+  conditions       Json?
+  
+  // Status
+  status           BidStatus      @default(SUBMITTED)
+  validUntil       DateTime
+  
+  // Due Diligence
+  dueDiligenceStatus String?
+  dueDiligenceNotes  String?
+  
+  // Relations
+  negotiations     Negotiation[]
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@map("exit_bids")
+}
+
+model Negotiation {
+  id          String    @id @default(cuid())
+  bidId       String
+  bid         ExitBid   @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  
+  // Negotiation Details
+  round       Int       @default(1)
+  proposedBy  String    // User ID
+  
+  // Terms
+  counterOffer Decimal? @db.Decimal(15, 2)
+  terms       Json?
+  notes       String?
+  
+  // Status
+  status      NegotiationStatus @default(ACTIVE)
+  respondBy   DateTime?
+  
+  createdAt   DateTime  @default(now())
+
+  @@map("negotiations")
+}
+
+model ExitActivity {
+  id            String          @id @default(cuid())
+  opportunityId String
+  opportunity   ExitOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  
+  activityType  String
+  description   String
+  userId        String?
+  metadata      Json?
+  
+  createdAt     DateTime        @default(now())
+
+  @@map("exit_activities")
+}
+
+model Valuation {
+  id             String         @id @default(cuid())
+  businessId     String
+  
+  // Valuation Details
+  method         ValuationMethod
+  value          Decimal        @db.Decimal(15, 2)
+  currency       String         @default("INR")
+  
+  // Methodology
+  parameters     Json
+  assumptions    Json?
+  calculations   Json?
+  
+  // Validity
+  validFrom      DateTime       @default(now())
+  validUntil     DateTime
+  
+  // Audit
+  valuedBy       String
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("valuations")
+}
+
+enum ExitType {
+  ACQUISITION
+  MERGER
+  IPO
+  SECONDARY_SALE
+  MANAGEMENT_BUYOUT
+  STRATEGIC_PARTNERSHIP
+}
+
+enum ExitStatus {
+  DRAFT
+  ACTIVE
+  UNDER_REVIEW
+  LIVE
+  NEGOTIATING
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum BidderType {
+  INDIVIDUAL_INVESTOR
+  INSTITUTIONAL_INVESTOR
+  STRATEGIC_BUYER
+  PRIVATE_EQUITY
+  VENTURE_CAPITAL
+  CORPORATE
+}
+
+enum BidStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+}
+
+enum NegotiationStatus {
+  ACTIVE
+  ACCEPTED
+  REJECTED
+  COUNTERED
+  EXPIRED
+}
+
+enum ValuationMethod {
+  DCF
+  COMPARABLE_COMPANY
+  ASSET_BASED
+  REVENUE_MULTIPLE
+  EBITDA_MULTIPLE
+  RISK_ADJUSTED
+}

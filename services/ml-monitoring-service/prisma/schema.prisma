@@ -1,1 +1,215 @@
-../../../shared/db/schema.prisma
+// ML Monitoring Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model MLModel {
+  id           String      @id @default(cuid())
+  name         String      @unique
+  version      String
+  description  String?
+  modelType    ModelType
+  status       ModelStatus @default(TRAINING)
+  
+  // Model Configuration
+  parameters   Json
+  features     String[]
+  targetMetric String
+  
+  // Performance Metrics
+  accuracy     Decimal?    @db.Decimal(5, 4)
+  precision    Decimal?    @db.Decimal(5, 4)
+  recall       Decimal?    @db.Decimal(5, 4)
+  f1Score      Decimal?    @db.Decimal(5, 4)
+  
+  // Deployment
+  endpoint     String?
+  isActive     Boolean     @default(false)
+  
+  // Relations
+  predictions  Prediction[]
+  experiments  Experiment[]
+  
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("ml_models")
+}
+
+model Prediction {
+  id          String   @id @default(cuid())
+  modelId     String
+  model       MLModel  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  
+  // Input Data
+  inputData   Json
+  features    Json
+  
+  // Prediction Results
+  prediction  Json
+  confidence  Decimal? @db.Decimal(5, 4)
+  
+  // Context
+  entityId    String?  // ID of entity being predicted for
+  entityType  String?  // Type of entity (user, business, transaction)
+  requestId   String?  // For tracking requests
+  
+  // Performance
+  responseTime Int?    // In milliseconds
+  
+  createdAt   DateTime @default(now())
+
+  @@map("predictions")
+}
+
+model Experiment {
+  id            String           @id @default(cuid())
+  modelId       String
+  model         MLModel          @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  
+  name          String
+  description   String?
+  status        ExperimentStatus @default(RUNNING)
+  
+  // Configuration
+  parameters    Json
+  datasetInfo   Json
+  
+  // Results
+  metrics       Json?
+  results       Json?
+  
+  // Duration
+  startedAt     DateTime         @default(now())
+  completedAt   DateTime?
+  
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@map("experiments")
+}
+
+model DataDrift {
+  id          String     @id @default(cuid())
+  modelId     String
+  
+  // Drift Detection
+  feature     String
+  driftScore  Decimal    @db.Decimal(5, 4)
+  threshold   Decimal    @db.Decimal(5, 4)
+  severity    DriftSeverity
+  
+  // Time Period
+  startDate   DateTime
+  endDate     DateTime
+  
+  // Statistics
+  statistics  Json
+  
+  createdAt   DateTime   @default(now())
+
+  @@map("data_drift")
+}
+
+model ModelMetrics {
+  id          String   @id @default(cuid())
+  modelId     String
+  
+  // Time Period
+  date        DateTime
+  period      String   // hourly, daily, weekly
+  
+  // Request Metrics
+  requestCount Int     @default(0)
+  errorCount   Int     @default(0)
+  avgResponseTime Decimal? @db.Decimal(8, 2)
+  
+  // Performance Metrics
+  accuracy    Decimal? @db.Decimal(5, 4)
+  precision   Decimal? @db.Decimal(5, 4)
+  recall      Decimal? @db.Decimal(5, 4)
+  
+  createdAt   DateTime @default(now())
+
+  @@unique([modelId, date, period])
+  @@map("model_metrics")
+}
+
+model Alert {
+  id          String      @id @default(cuid())
+  modelId     String?
+  
+  alertType   AlertType
+  severity    AlertSeverity
+  title       String
+  message     String
+  metadata    Json?
+  
+  status      AlertStatus @default(OPEN)
+  assignedTo  String?
+  resolvedAt  DateTime?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("alerts")
+}
+
+enum ModelType {
+  CLASSIFICATION
+  REGRESSION
+  CLUSTERING
+  RECOMMENDATION
+  ANOMALY_DETECTION
+  NLP
+  TIME_SERIES
+}
+
+enum ModelStatus {
+  TRAINING
+  VALIDATION
+  DEPLOYED
+  RETIRED
+  FAILED
+}
+
+enum ExperimentStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum DriftSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertType {
+  PERFORMANCE_DEGRADATION
+  DATA_DRIFT
+  MODEL_ERROR
+  SYSTEM_ERROR
+  THRESHOLD_BREACH
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  RESOLVED
+  CLOSED
+}

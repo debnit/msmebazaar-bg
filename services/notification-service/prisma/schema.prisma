@@ -1,9 +1,243 @@
+// Notification Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model Notification {
-  id        String   @id @default(uuid())
-  userId    String
-  type      String
-  message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String           @id @default(cuid())
+  userId         String
+  
+  // Notification Content
+  type           NotificationType
+  title          String
+  message        String
+  data           Json?            // Additional data for the notification
+  
+  // Delivery Channels
+  channels       DeliveryChannel[]
+  
+  // Status
+  status         NotificationStatus @default(PENDING)
+  read           Boolean          @default(false)
+  readAt         DateTime?
+  
+  // Delivery Tracking
+  deliveryStatus Json?            // Track delivery status per channel
+  
+  // Priority & Scheduling
+  priority       Priority         @default(NORMAL)
+  scheduledFor   DateTime?        // For scheduled notifications
+  expiresAt      DateTime?
+  
+  // Grouping & Threading
+  groupId        String?          // For grouping related notifications
+  parentId       String?          // For threaded notifications
+  
+  // Relations
+  deliveries     NotificationDelivery[]
+  
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@map("notifications")
+}
+
+model NotificationTemplate {
+  id          String                @id @default(cuid())
+  name        String                @unique
+  type        NotificationType
+  
+  // Template Content
+  subject     String?
+  bodyText    String
+  bodyHtml    String?
+  
+  // Channel-specific templates
+  pushTitle   String?
+  pushBody    String?
+  smsText     String?
+  
+  // Variables
+  variables   String[]              // List of available variables
+  
+  // Settings
+  isActive    Boolean               @default(true)
+  category    TemplateCategory
+  
+  // Relations
+  deliveries  NotificationDelivery[]
+  
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@map("notification_templates")
+}
+
+model NotificationDelivery {
+  id             String              @id @default(cuid())
+  notificationId String
+  notification   Notification        @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  templateId     String?
+  template       NotificationTemplate? @relation(fields: [templateId], references: [id])
+  
+  // Delivery Details
+  channel        DeliveryChannel
+  recipient      String              // Email, phone, device token, etc.
+  status         DeliveryStatus      @default(PENDING)
+  
+  // Content (rendered from template)
+  subject        String?
+  content        String
+  
+  // Delivery Tracking
+  deliveredAt    DateTime?
+  failedAt       DateTime?
+  readAt         DateTime?
+  clickedAt      DateTime?
+  
+  // Error Handling
+  errorMessage   String?
+  retryCount     Int                 @default(0)
+  maxRetries     Int                 @default(3)
+  
+  // External References
+  externalId     String?             // ID from email service, SMS service, etc.
+  
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@map("notification_deliveries")
+}
+
+model UserPreferences {
+  id                 String            @id @default(cuid())
+  userId             String            @unique
+  
+  // Channel Preferences
+  emailEnabled       Boolean           @default(true)
+  smsEnabled         Boolean           @default(true)
+  pushEnabled        Boolean           @default(true)
+  inAppEnabled       Boolean           @default(true)
+  
+  // Category Preferences
+  marketing          Boolean           @default(true)
+  transactional      Boolean           @default(true)
+  security           Boolean           @default(true)
+  system             Boolean           @default(true)
+  
+  // Timing Preferences
+  quietHoursStart    String?           // HH:MM format
+  quietHoursEnd      String?           // HH:MM format
+  timezone           String?
+  
+  // Frequency Settings
+  digestFrequency    DigestFrequency   @default(NONE)
+  
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@map("user_preferences")
+}
+
+model NotificationSubscription {
+  id          String           @id @default(cuid())
+  userId      String
+  
+  // Subscription Details
+  endpoint    String           @unique  // For web push
+  p256dh      String?
+  auth        String?
+  deviceToken String?          // For mobile push
+  deviceType  DeviceType?
+  
+  // Status
+  isActive    Boolean          @default(true)
+  
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("notification_subscriptions")
+}
+
+enum NotificationType {
+  INVESTMENT_UPDATE
+  PAYMENT_CONFIRMATION
+  PAYMENT_FAILED
+  KYC_STATUS
+  LOAN_STATUS
+  INQUIRY_RECEIVED
+  INQUIRY_RESPONSE
+  LISTING_APPROVED
+  LISTING_REJECTED
+  PROFILE_UPDATE
+  SECURITY_ALERT
+  SYSTEM_MAINTENANCE
+  MARKETING_CAMPAIGN
+  RECOMMENDATION
+  REMINDER
+  WELCOME
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+  TWO_FACTOR_AUTH
+}
+
+enum DeliveryChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+  READ
+  CLICKED
+  UNSUBSCRIBED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TemplateCategory {
+  TRANSACTIONAL
+  MARKETING
+  SECURITY
+  SYSTEM
+  NOTIFICATION
+}
+
+enum DigestFrequency {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum DeviceType {
+  ANDROID
+  IOS
+  WEB
+  DESKTOP
 }

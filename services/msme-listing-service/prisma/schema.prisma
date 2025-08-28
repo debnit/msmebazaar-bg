@@ -1,7 +1,174 @@
+// MSME Listing Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model Listing {
-  id          String   @id @default(uuid())
-  msmeId      String
-  title       String
-  description String
-  msme        MSME     @relation(fields: [msmeId], references: [id])
+  id              String        @id @default(cuid())
+  msmeId          String
+  
+  // Basic Information
+  title           String
+  description     String
+  category        String
+  subcategory     String?
+  tags            String[]
+  
+  // Business Details
+  businessType    BusinessType
+  establishedYear Int?
+  employeeCount   Int?
+  
+  // Product/Service Information
+  products        Json?
+  services        Json?
+  certifications  String[]
+  
+  // Contact & Location
+  contactEmail    String
+  contactPhone    String
+  address         Json
+  website         String?
+  
+  // Listing Management
+  status          ListingStatus @default(DRAFT)
+  visibility      Visibility    @default(PRIVATE)
+  isPremium       Boolean       @default(false)
+  isVerified      Boolean       @default(false)
+  
+  // SEO & Marketing
+  metaTitle       String?
+  metaDescription String?
+  slug            String?       @unique
+  
+  // Media
+  images          String[]
+  videos          String[]
+  documents       String[]
+  
+  // Analytics
+  viewCount       Int           @default(0)
+  inquiryCount    Int           @default(0)
+  
+  // Relations
+  inquiries       ListingInquiry[]
+  reviews         ListingReview[]
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  publishedAt     DateTime?
+
+  @@map("listings")
+}
+
+model ListingInquiry {
+  id          String       @id @default(cuid())
+  listingId   String
+  listing     Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  
+  // Inquirer Information
+  name        String
+  email       String
+  phone       String?
+  company     String?
+  
+  // Inquiry Details
+  subject     String
+  message     String
+  inquiryType InquiryType  @default(GENERAL)
+  
+  // Status
+  status      InquiryStatus @default(NEW)
+  response    String?
+  respondedAt DateTime?
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("listing_inquiries")
+}
+
+model ListingReview {
+  id          String   @id @default(cuid())
+  listingId   String
+  listing     Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  
+  // Reviewer Information
+  reviewerId  String
+  reviewerName String
+  
+  // Review Content
+  rating      Int      // 1-5 stars
+  title       String?
+  comment     String
+  
+  // Status
+  isVerified  Boolean  @default(false)
+  isPublished Boolean @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("listing_reviews")
+}
+
+model Category {
+  id          String @id @default(cuid())
+  name        String @unique
+  description String?
+  parentId    String?
+  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  
+  isActive    Boolean @default(true)
+  sortOrder   Int     @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("categories")
+}
+
+enum BusinessType {
+  MICRO
+  SMALL
+  MEDIUM
+  STARTUP
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  SUSPENDED
+  REJECTED
+  ARCHIVED
+}
+
+enum Visibility {
+  PRIVATE
+  PUBLIC
+  MEMBERS_ONLY
+}
+
+enum InquiryType {
+  GENERAL
+  QUOTATION
+  PARTNERSHIP
+  INVESTMENT
+  PROCUREMENT
+}
+
+enum InquiryStatus {
+  NEW
+  IN_PROGRESS
+  RESPONDED
+  CLOSED
+  SPAM
 }

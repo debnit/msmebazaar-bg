@@ -1,1 +1,160 @@
-../../../shared/db/schema.prisma
+// Compliance Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ComplianceCheck {
+  id           String            @id @default(cuid())
+  entityId     String            // ID of entity being checked
+  entityType   EntityType
+  checkType    ComplianceType
+  status       ComplianceStatus  @default(PENDING)
+  score        Decimal?          @db.Decimal(5, 2)
+  
+  // Check Details
+  criteria     Json              // Compliance criteria checked
+  findings     Json?             // Issues found
+  recommendations String?
+  
+  // Workflow
+  assignedTo   String?           // Compliance officer ID
+  reviewedBy   String?           // Reviewer ID
+  reviewedAt   DateTime?
+  
+  // Audit Trail
+  metadata     Json?
+  
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@map("compliance_checks")
+}
+
+model ComplianceDocument {
+  id            String              @id @default(cuid())
+  entityId      String
+  entityType    EntityType
+  documentType  DocumentType
+  documentUrl   String
+  documentHash  String?             // For integrity verification
+  status        DocumentStatus      @default(SUBMITTED)
+  
+  // Verification Details
+  verifiedBy    String?
+  verifiedAt    DateTime?
+  expiresAt     DateTime?
+  rejectionReason String?
+  
+  // Compliance Check
+  checkId       String?
+  
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@map("compliance_documents")
+}
+
+model ComplianceRule {
+  id           String        @id @default(cuid())
+  ruleName     String        @unique
+  description  String
+  entityType   EntityType
+  category     RuleCategory
+  severity     RuleSeverity
+  isActive     Boolean       @default(true)
+  
+  // Rule Definition
+  conditions   Json          // Rule logic
+  actions      Json          // Actions to take
+  
+  // Metadata
+  version      Int           @default(1)
+  
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("compliance_rules")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  entityId    String
+  entityType  EntityType
+  action      String
+  description String
+  userId      String?
+  
+  // Context
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  
+  createdAt   DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+enum EntityType {
+  USER
+  BUSINESS
+  TRANSACTION
+  LISTING
+  INVESTMENT
+}
+
+enum ComplianceType {
+  KYC
+  AML
+  RISK_ASSESSMENT
+  DOCUMENT_VERIFICATION
+  BUSINESS_VERIFICATION
+  FINANCIAL_COMPLIANCE
+}
+
+enum ComplianceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLIANT
+  NON_COMPLIANT
+  REVIEW_REQUIRED
+  ESCALATED
+}
+
+enum DocumentType {
+  KYC_DOCUMENT
+  FINANCIAL_STATEMENT
+  BUSINESS_LICENSE
+  TAX_CERTIFICATE
+  BANK_STATEMENT
+  IDENTITY_PROOF
+  ADDRESS_PROOF
+}
+
+enum DocumentStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+  RESUBMISSION_REQUIRED
+}
+
+enum RuleCategory {
+  IDENTITY_VERIFICATION
+  FINANCIAL_SCREENING
+  BUSINESS_VALIDATION
+  TRANSACTION_MONITORING
+  RISK_ASSESSMENT
+}
+
+enum RuleSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}

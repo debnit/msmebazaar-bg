@@ -1,1 +1,305 @@
-../../../shared/db/schema.prisma
+// SuperAdmin Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SuperAdmin {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  password        String
+  name            String
+  role            SuperAdminRole   @default(ADMIN)
+  permissions     String[]
+  
+  // Security
+  isActive        Boolean          @default(true)
+  isSuperUser     Boolean          @default(false)
+  lastLoginAt     DateTime?
+  passwordChangedAt DateTime?
+  
+  // Two-Factor Authentication
+  twoFactorEnabled Boolean         @default(false)
+  twoFactorSecret String?
+  
+  // Relations
+  auditLogs       SuperAdminAuditLog[]
+  systemSettings  SystemSetting[]
+  
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("super_admins")
+}
+
+model SystemSetting {
+  id            String      @id @default(cuid())
+  key           String      @unique
+  value         Json
+  description   String?
+  category      SettingCategory
+  
+  // Metadata
+  dataType      DataType
+  isEditable    Boolean     @default(true)
+  isSecret      Boolean     @default(false)
+  
+  // Audit
+  createdBy     String?
+  updatedBy     String?
+  createdById   SuperAdmin? @relation(fields: [createdBy], references: [id])
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("system_settings")
+}
+
+model SystemMetrics {
+  id                String   @id @default(cuid())
+  timestamp         DateTime @default(now())
+  
+  // User Metrics
+  totalUsers        Int      @default(0)
+  activeUsers       Int      @default(0)
+  newUsersToday     Int      @default(0)
+  
+  // Business Metrics
+  totalBusinesses   Int      @default(0)
+  verifiedBusinesses Int     @default(0)
+  newBusinessesToday Int     @default(0)
+  
+  // Transaction Metrics
+  totalTransactions Int      @default(0)
+  transactionVolume Decimal  @default(0) @db.Decimal(15, 2)
+  dailyRevenue      Decimal  @default(0) @db.Decimal(15, 2)
+  
+  // System Health
+  systemUptime      Int?     // In seconds
+  responseTime      Decimal? @db.Decimal(8, 2) // In milliseconds
+  errorRate         Decimal? @db.Decimal(5, 4)
+  
+  // Storage
+  storageUsed       BigInt?  // In bytes
+  databaseSize      BigInt?  // In bytes
+  
+  createdAt         DateTime @default(now())
+
+  @@map("system_metrics")
+  @@index([timestamp])
+}
+
+model SuperAdminAuditLog {
+  id            String      @id @default(cuid())
+  adminId       String
+  admin         SuperAdmin  @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  
+  // Action Details
+  action        String
+  entityType    String?     // What was affected
+  entityId      String?     // ID of affected entity
+  description   String
+  
+  // Change Details
+  beforeData    Json?       // Data before change
+  afterData     Json?       // Data after change
+  
+  // Context
+  ipAddress     String?
+  userAgent     String?
+  requestId     String?
+  
+  // Risk Assessment
+  riskLevel     RiskLevel   @default(LOW)
+  
+  createdAt     DateTime    @default(now())
+
+  @@map("super_admin_audit_logs")
+  @@index([adminId, action])
+  @@index([createdAt])
+}
+
+model GlobalConfiguration {
+  id              String       @id @default(cuid())
+  name            String       @unique
+  configuration   Json
+  environment     Environment  @default(PRODUCTION)
+  
+  // Version Control
+  version         String       @default("1.0.0")
+  isActive        Boolean      @default(true)
+  
+  // Deployment
+  deployedAt      DateTime?
+  rollbackData    Json?
+  
+  description     String?
+  
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("global_configurations")
+}
+
+model FeatureFlag {
+  id            String       @id @default(cuid())
+  name          String       @unique
+  description   String?
+  isEnabled     Boolean      @default(false)
+  
+  // Targeting
+  targetUsers   String[]     // User IDs
+  targetGroups  String[]     // User groups
+  rolloutPercentage Decimal  @default(0) @db.Decimal(5, 2)
+  
+  // Configuration
+  configuration Json?
+  
+  // Lifecycle
+  environment   Environment  @default(PRODUCTION)
+  startDate     DateTime?
+  endDate       DateTime?
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("feature_flags")
+}
+
+model SystemAlert {
+  id            String       @id @default(cuid())
+  title         String
+  message       String
+  alertType     AlertType
+  severity      AlertSeverity
+  
+  // Targeting
+  targetRoles   String[]     // Which roles should see this
+  targetUsers   String[]     // Specific users
+  
+  // Status
+  status        AlertStatus  @default(ACTIVE)
+  isRead        Boolean      @default(false)
+  
+  // Scheduling
+  startDate     DateTime     @default(now())
+  endDate       DateTime?
+  
+  // Metadata
+  metadata      Json?
+  
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("system_alerts")
+}
+
+model BackupLog {
+  id            String       @id @default(cuid())
+  backupType    BackupType
+  status        BackupStatus
+  
+  // Backup Details
+  fileName      String
+  fileSize      BigInt?      // In bytes
+  location      String       // S3 path, local path, etc.
+  
+  // Metadata
+  serviceName   String?      // Which service was backed up
+  tables        String[]     // Which tables were included
+  
+  // Timing
+  startTime     DateTime
+  endTime       DateTime?
+  duration      Int?         // In seconds
+  
+  // Error Handling
+  errorMessage  String?
+  retryCount    Int          @default(0)
+  
+  createdAt     DateTime     @default(now())
+
+  @@map("backup_logs")
+  @@index([backupType, status])
+  @@index([startTime])
+}
+
+enum SuperAdminRole {
+  SUPER_ADMIN
+  ADMIN
+  SYSTEM_ADMIN
+  COMPLIANCE_ADMIN
+  FINANCIAL_ADMIN
+}
+
+enum SettingCategory {
+  SYSTEM
+  SECURITY
+  PAYMENT
+  NOTIFICATION
+  BUSINESS
+  COMPLIANCE
+  FEATURE
+}
+
+enum DataType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  ARRAY
+  DATE
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Environment {
+  DEVELOPMENT
+  STAGING
+  PRODUCTION
+}
+
+enum AlertType {
+  SYSTEM
+  SECURITY
+  MAINTENANCE
+  FEATURE
+  COMPLIANCE
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+enum AlertStatus {
+  ACTIVE
+  DISMISSED
+  EXPIRED
+}
+
+enum BackupType {
+  FULL
+  INCREMENTAL
+  DIFFERENTIAL
+  TRANSACTION_LOG
+}
+
+enum BackupStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}

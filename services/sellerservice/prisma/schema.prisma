@@ -1,37 +1,316 @@
-model Seller {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  name          String
-  businessName  String?
-  isPro         Boolean  @default(false)
-  onboardedProAt DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+// Seller Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
 
-  listings      Listing[]
-  inquiries     Inquiry[]
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Seller {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  name           String
+  phone          String?
+  businessName   String?
+  businessType   SellerType     @default(INDIVIDUAL)
+  isPro          Boolean        @default(false)
+  onboardedProAt DateTime?
+  
+  // Business Details
+  gstNumber      String?        @unique
+  panNumber      String?
+  businessAddress Json?
+  website        String?
+  
+  // Verification
+  isVerified     Boolean        @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
+  
+  // Performance Metrics
+  rating         Decimal?       @db.Decimal(3, 2)
+  totalSales     Int            @default(0)
+  responseTime   Int?           // Average response time in minutes
+  
+  // Status
+  status         SellerStatus   @default(ACTIVE)
+  
+  // Relations
+  listings       Listing[]
+  inquiries      Inquiry[]
+  orders         SellerOrder[]
+  reviews        SellerReview[]
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("sellers")
 }
 
 model Listing {
-  id            String   @id @default(uuid())
-  sellerId      String
-  title         String
-  description   String
-  category      String
-  price         Float
-  isFeatured    Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  seller        Seller   @relation(fields: [sellerId], references: [id])
+  id              String        @id @default(cuid())
+  sellerId        String
+  seller          Seller        @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  
+  // Basic Information
+  title           String
+  description     String
+  category        String
+  subcategory     String?
+  
+  // Pricing
+  price           Decimal       @db.Decimal(15, 2)
+  currency        String        @default("INR")
+  priceType       PriceType     @default(FIXED)
+  minOrderQty     Int?
+  
+  // Product Details
+  specifications  Json?
+  features        String[]
+  tags            String[]
+  
+  // Inventory
+  stockQuantity   Int?
+  isInStock       Boolean       @default(true)
+  
+  // Media
+  images          String[]
+  videos          String[]
+  documents       String[]
+  
+  // Status & Visibility
+  status          ListingStatus @default(DRAFT)
+  isActive        Boolean       @default(true)
+  isFeatured      Boolean       @default(false)
+  
+  // SEO
+  slug            String?       @unique
+  metaTitle       String?
+  metaDescription String?
+  
+  // Analytics
+  viewCount       Int           @default(0)
+  inquiryCount    Int           @default(0)
+  
+  // Relations
+  inquiries       Inquiry[]
+  orders          SellerOrder[]
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  publishedAt     DateTime?
+
+  @@map("listings")
 }
 
 model Inquiry {
-  id            String   @id @default(uuid())
-  sellerId      String
-  buyerId       String
-  listingId     String
-  message       String
-  status        String   // e.g. "open", "responded", "closed"
-  createdAt     DateTime @default(now())
-  seller        Seller   @relation(fields: [sellerId], references: [id])
+  id          String       @id @default(cuid())
+  sellerId    String
+  seller      Seller       @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  buyerId     String
+  listingId   String
+  listing     Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  
+  // Inquiry Details
+  subject     String?
+  message     String
+  inquiryType InquiryType  @default(GENERAL)
+  
+  // Contact Information
+  contactName  String
+  contactEmail String
+  contactPhone String?
+  
+  // Response
+  response     String?
+  respondedAt  DateTime?
+  
+  // Status
+  status       InquiryStatus @default(NEW)
+  priority     Priority     @default(NORMAL)
+  
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("inquiries")
+}
+
+model SellerOrder {
+  id          String      @id @default(cuid())
+  sellerId    String
+  seller      Seller      @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  listingId   String
+  listing     Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId     String
+  
+  // Order Details
+  quantity    Int         @default(1)
+  unitPrice   Decimal     @db.Decimal(15, 2)
+  totalAmount Decimal     @db.Decimal(15, 2)
+  
+  // Status
+  status      OrderStatus @default(PENDING)
+  
+  // Dates
+  orderDate   DateTime    @default(now())
+  deliveryDate DateTime?
+  completedAt DateTime?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("seller_orders")
+}
+
+model SellerReview {
+  id          String   @id @default(cuid())
+  sellerId    String
+  seller      Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  reviewerId  String
+  orderId     String?
+  
+  // Review Content
+  rating      Int      // 1-5 stars
+  title       String?
+  comment     String
+  
+  // Categories
+  qualityRating    Int? // 1-5
+  serviceRating    Int? // 1-5
+  deliveryRating   Int? // 1-5
+  
+  // Status
+  isVerified  Boolean  @default(false)
+  isPublished Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("seller_reviews")
+}
+
+model SellerSubscription {
+  id              String             @id @default(cuid())
+  sellerId        String             @unique
+  
+  // Subscription Details
+  plan            SubscriptionPlan
+  status          SubscriptionStatus @default(ACTIVE)
+  
+  // Billing
+  amount          Decimal            @db.Decimal(10, 2)
+  currency        String             @default("INR")
+  billingCycle    BillingCycle
+  
+  // Dates
+  startDate       DateTime           @default(now())
+  endDate         DateTime
+  nextBillingDate DateTime
+  
+  // Features
+  featuresEnabled String[]
+  maxListings     Int?
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@map("seller_subscriptions")
+}
+
+enum SellerType {
+  INDIVIDUAL
+  BUSINESS
+  MANUFACTURER
+  DISTRIBUTOR
+  WHOLESALER
+  RETAILER
+}
+
+enum VerificationStatus {
+  PENDING
+  IN_PROGRESS
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum SellerStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum PriceType {
+  FIXED
+  NEGOTIABLE
+  QUOTE_BASED
+  AUCTION
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  SUSPENDED
+  REJECTED
+  EXPIRED
+}
+
+enum InquiryType {
+  GENERAL
+  PRICE_INQUIRY
+  BULK_ORDER
+  CUSTOM_REQUEST
+  PARTNERSHIP
+  SUPPORT
+}
+
+enum InquiryStatus {
+  NEW
+  IN_PROGRESS
+  RESPONDED
+  CONVERTED
+  CLOSED
+  SPAM
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PREMIUM
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  SUSPENDED
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  YEARLY
 }

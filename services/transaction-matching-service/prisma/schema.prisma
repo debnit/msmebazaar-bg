@@ -1,1 +1,340 @@
-../../../shared/db/schema.prisma
+// Transaction Matching Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model TransactionRequest {
+  id              String              @id @default(cuid())
+  requesterId     String
+  requesterType   EntityType
+  
+  // Request Details
+  transactionType TransactionType
+  amount          Decimal             @db.Decimal(15, 2)
+  currency        String              @default("INR")
+  description     String
+  
+  // Requirements
+  requirements    Json                // Specific requirements for matching
+  preferences     Json?               // Preferred criteria
+  
+  // Constraints
+  minAmount       Decimal?            @db.Decimal(15, 2)
+  maxAmount       Decimal?            @db.Decimal(15, 2)
+  deadline        DateTime?
+  location        String?
+  
+  // Status
+  status          RequestStatus       @default(PENDING)
+  priority        Priority            @default(NORMAL)
+  
+  // Matching
+  matches         TransactionMatch[]
+  
+  // Lifecycle
+  expiresAt       DateTime?
+  completedAt     DateTime?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@map("transaction_requests")
+}
+
+model TransactionMatch {
+  id              String              @id @default(cuid())
+  requestId       String
+  request         TransactionRequest  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  // Match Details
+  matchedEntityId String
+  matchedEntityType EntityType
+  matchedRequestId String?           // If matching with another request
+  
+  // Scoring
+  matchScore      Decimal             @db.Decimal(5, 4)
+  confidence      Decimal             @db.Decimal(5, 4)
+  algorithm       String              // Algorithm used for matching
+  
+  // Match Criteria
+  matchedCriteria Json                // What criteria matched
+  unmatchedCriteria Json?             // What didn't match
+  
+  // Proposed Terms
+  proposedAmount  Decimal             @db.Decimal(15, 2)
+  proposedTerms   Json?
+  
+  // Status & Interaction
+  status          MatchStatus         @default(PROPOSED)
+  viewedAt        DateTime?
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  
+  // Communication
+  negotiations    Negotiation[]
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@map("transaction_matches")
+  @@index([requestId, matchScore])
+}
+
+model Negotiation {
+  id              String              @id @default(cuid())
+  matchId         String
+  match           TransactionMatch    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  
+  // Negotiation Details
+  round           Int                 @default(1)
+  proposedBy      String              // User ID who made the proposal
+  proposedToType  EntityType
+  
+  // Terms
+  proposedAmount  Decimal?            @db.Decimal(15, 2)
+  proposedTerms   Json?
+  message         String?
+  
+  // Response
+  response        NegotiationResponse @default(PENDING)
+  responseMessage String?
+  respondedAt     DateTime?
+  
+  // Timeline
+  validUntil      DateTime?
+  
+  createdAt       DateTime            @default(now())
+
+  @@map("negotiations")
+}
+
+model Transaction {
+  id                String            @id @default(cuid())
+  
+  // Parties
+  buyerId           String
+  sellerId          String
+  matchId           String?           // Reference to the match that created this
+  
+  // Transaction Details
+  transactionType   TransactionType
+  amount            Decimal           @db.Decimal(15, 2)
+  currency          String            @default("INR")
+  description       String
+  
+  // Terms
+  terms             Json
+  contractUrl       String?
+  
+  // Status & Workflow
+  status            TransactionStatus @default(PENDING)
+  stage             TransactionStage  @default(AGREEMENT)
+  
+  // Milestones
+  milestones        TransactionMilestone[]
+  
+  // Payments
+  payments          TransactionPayment[]
+  
+  // Documentation
+  documents         String[]
+  
+  // Important Dates
+  agreementDate     DateTime?
+  startDate         DateTime?
+  expectedEndDate   DateTime?
+  actualEndDate     DateTime?
+  
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("transactions")
+}
+
+model TransactionMilestone {
+  id              String            @id @default(cuid())
+  transactionId   String
+  transaction     Transaction       @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  
+  // Milestone Details
+  title           String
+  description     String?
+  sequence        Int               // Order of milestone
+  
+  // Conditions
+  requirements    Json?             // What needs to be done
+  deliverables    String[]
+  
+  // Status
+  status          MilestoneStatus   @default(PENDING)
+  
+  // Timeline
+  dueDate         DateTime?
+  completedAt     DateTime?
+  
+  // Verification
+  verifiedBy      String?
+  verificationNotes String?
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("transaction_milestones")
+}
+
+model TransactionPayment {
+  id              String            @id @default(cuid())
+  transactionId   String
+  transaction     Transaction       @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  
+  // Payment Details
+  amount          Decimal           @db.Decimal(15, 2)
+  currency        String            @default("INR")
+  paymentType     PaymentType
+  
+  // Triggers
+  triggerEvent    String            // What triggers this payment
+  milestoneId     String?           // If tied to a milestone
+  
+  // Status
+  status          PaymentStatus     @default(PENDING)
+  
+  // Dates
+  dueDate         DateTime?
+  paidAt          DateTime?
+  
+  // External References
+  paymentRef      String?           // External payment reference
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("transaction_payments")
+}
+
+model MatchingRule {
+  id              String            @id @default(cuid())
+  name            String            @unique
+  description     String?
+  
+  // Rule Configuration
+  transactionType TransactionType?  // Applicable transaction type
+  entityTypes     EntityType[]      // Applicable entity types
+  
+  // Matching Logic
+  conditions      Json              // Matching conditions
+  weights         Json              // Feature weights
+  thresholds      Json              // Matching thresholds
+  
+  // Status
+  isActive        Boolean           @default(true)
+  priority        Int               @default(1)
+  
+  // Performance
+  successRate     Decimal?          @db.Decimal(5, 4)
+  avgMatchScore   Decimal?          @db.Decimal(5, 4)
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("matching_rules")
+}
+
+enum EntityType {
+  BUYER
+  SELLER
+  INVESTOR
+  BUSINESS
+  FINANCIAL_INSTITUTION
+  MARKETPLACE
+}
+
+enum TransactionType {
+  PURCHASE_ORDER
+  INVESTMENT
+  LOAN
+  PARTNERSHIP
+  SERVICE_CONTRACT
+  SUPPLY_AGREEMENT
+  LICENSING
+  JOINT_VENTURE
+}
+
+enum RequestStatus {
+  PENDING
+  ACTIVE
+  MATCHED
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum MatchStatus {
+  PROPOSED
+  VIEWED
+  UNDER_NEGOTIATION
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum NegotiationResponse {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTER_OFFER
+}
+
+enum TransactionStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+  FAILED
+}
+
+enum TransactionStage {
+  AGREEMENT
+  IN_PROGRESS
+  REVIEW
+  COMPLETION
+  CLOSED
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentType {
+  ADVANCE
+  MILESTONE
+  COMPLETION
+  INSTALLMENT
+  FULL
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+}

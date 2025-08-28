@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 export const Config = {
-  port: process.env.SERVICE_PORT || 8021,
+  port: process.env.SERVICE_PORT || 8028,
   jwtSecret: process.env.JWT_SECRET || "changeme",
   dbUrl: process.env.DATABASE_URL!,
 };

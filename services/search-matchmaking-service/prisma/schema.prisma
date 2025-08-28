@@ -1,1 +1,303 @@
-../../../shared/db/schema.prisma
+// Search & Matchmaking Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SearchQuery {
+  id            String       @id @default(cuid())
+  userId        String?
+  sessionId     String?
+  
+  // Query Details
+  query         String
+  filters       Json?
+  category      String?
+  location      String?
+  priceRange    Json?
+  
+  // Search Context
+  searchType    SearchType
+  sortBy        String?
+  page          Int          @default(1)
+  limit         Int          @default(20)
+  
+  // Results
+  resultCount   Int?
+  results       Json?        // Store result IDs and scores
+  
+  // Performance
+  executionTime Int?         // In milliseconds
+  
+  createdAt     DateTime     @default(now())
+
+  @@map("search_queries")
+  @@index([userId])
+  @@index([searchType])
+  @@index([createdAt])
+}
+
+model MatchmakingRequest {
+  id              String            @id @default(cuid())
+  requesterId     String
+  requesterType   EntityType
+  
+  // Request Details
+  title           String
+  description     String
+  category        String
+  subcategory     String?
+  
+  // Requirements
+  requirements    Json
+  preferences     Json?
+  budget          Decimal?          @db.Decimal(15, 2)
+  timeline        String?
+  location        String?
+  
+  // Matching Criteria
+  matchingCriteria Json
+  
+  // Status
+  status          RequestStatus     @default(ACTIVE)
+  priority        Priority          @default(NORMAL)
+  expiresAt       DateTime?
+  
+  // Results
+  matches         Match[]
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("matchmaking_requests")
+}
+
+model Match {
+  id              String            @id @default(cuid())
+  requestId       String
+  request         MatchmakingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  // Match Details
+  entityId        String            // ID of matched entity
+  entityType      EntityType
+  entityName      String
+  
+  // Scoring
+  matchScore      Decimal           @db.Decimal(5, 4)
+  algorithm       String
+  confidence      Decimal?          @db.Decimal(5, 4)
+  
+  // Match Criteria
+  matchedCriteria Json              // Which criteria matched
+  unmatched       Json?             // What didn't match
+  
+  // Interaction
+  status          MatchStatus       @default(PENDING)
+  viewedAt        DateTime?
+  contactedAt     DateTime?
+  
+  // Feedback
+  feedback        MatchFeedback?
+  
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("matches")
+  @@index([requestId, matchScore])
+}
+
+model MatchFeedback {
+  id        String      @id @default(cuid())
+  matchId   String      @unique
+  match     Match       @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId    String
+  
+  // Feedback
+  rating    Int?        // 1-5 stars
+  feedback  FeedbackType
+  comment   String?
+  reason    String?
+  
+  createdAt DateTime    @default(now())
+
+  @@map("match_feedback")
+}
+
+model SearchIndex {
+  id          String      @id @default(cuid())
+  entityId    String      @unique
+  entityType  EntityType
+  
+  // Searchable Content
+  title       String
+  description String
+  content     String      // Full text content
+  tags        String[]
+  categories  String[]
+  
+  // Metadata
+  metadata    Json?
+  
+  // Search Optimization
+  searchVector String?    // For full-text search
+  popularity   Decimal?   @db.Decimal(5, 4)
+  boost        Decimal    @default(1.0) @db.Decimal(3, 2)
+  
+  // Status
+  isActive    Boolean     @default(true)
+  lastIndexed DateTime    @updatedAt
+  
+  createdAt   DateTime    @default(now())
+
+  @@map("search_index")
+  @@index([entityType, isActive])
+}
+
+model MatchingAlgorithm {
+  id            String            @id @default(cuid())
+  name          String            @unique
+  version       String
+  algorithmType AlgorithmType
+  
+  // Configuration
+  parameters    Json
+  weights       Json              // Feature weights
+  thresholds    Json              // Matching thresholds
+  
+  // Performance
+  accuracy      Decimal?          @db.Decimal(5, 4)
+  precision     Decimal?          @db.Decimal(5, 4)
+  recall        Decimal?          @db.Decimal(5, 4)
+  
+  // Status
+  status        AlgorithmStatus   @default(ACTIVE)
+  isDefault     Boolean           @default(false)
+  
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@map("matching_algorithms")
+}
+
+model EntityProfile {
+  id           String      @id @default(cuid())
+  entityId     String      @unique
+  entityType   EntityType
+  
+  // Profile Data
+  features     Json        // Feature vector for matching
+  preferences  Json?       // Entity preferences
+  constraints  Json?       // Hard constraints
+  
+  // Behavior Data
+  interactions Json?       // Interaction history
+  feedback     Json?       // Feedback received
+  
+  // Computed Metrics
+  popularity   Decimal?    @db.Decimal(5, 4)
+  reliability  Decimal?    @db.Decimal(5, 4)
+  responseRate Decimal?    @db.Decimal(5, 4)
+  
+  lastUpdated  DateTime    @updatedAt
+  createdAt    DateTime    @default(now())
+
+  @@map("entity_profiles")
+}
+
+model SearchAnalytics {
+  id              String   @id @default(cuid())
+  date            DateTime
+  
+  // Query Statistics
+  totalQueries    Int      @default(0)
+  uniqueUsers     Int      @default(0)
+  avgResponseTime Decimal? @db.Decimal(8, 2)
+  
+  // Popular Searches
+  topQueries      Json?
+  topCategories   Json?
+  topFilters      Json?
+  
+  // Performance Metrics
+  zeroResultQueries Int    @default(0)
+  clickThroughRate  Decimal? @db.Decimal(5, 4)
+  
+  // Matching Statistics
+  totalMatches    Int      @default(0)
+  avgMatchScore   Decimal? @db.Decimal(5, 4)
+  successRate     Decimal? @db.Decimal(5, 4)
+  
+  createdAt       DateTime @default(now())
+
+  @@unique([date])
+  @@map("search_analytics")
+}
+
+enum SearchType {
+  BUSINESS
+  LISTING
+  INVESTMENT
+  BUYER
+  SELLER
+  GENERAL
+}
+
+enum EntityType {
+  BUSINESS
+  BUYER
+  SELLER
+  INVESTOR
+  LISTING
+  LOAN_REQUEST
+}
+
+enum RequestStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum MatchStatus {
+  PENDING
+  VIEWED
+  CONTACTED
+  INTERESTED
+  NOT_INTERESTED
+  MATCHED
+}
+
+enum FeedbackType {
+  EXCELLENT
+  GOOD
+  AVERAGE
+  POOR
+  IRRELEVANT
+}
+
+enum AlgorithmType {
+  CONTENT_BASED
+  COLLABORATIVE
+  HYBRID
+  ML_BASED
+  RULE_BASED
+}
+
+enum AlgorithmStatus {
+  ACTIVE
+  TESTING
+  DEPRECATED
+  INACTIVE
+}

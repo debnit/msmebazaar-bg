@@ -1,68 +1,350 @@
+// User Profile Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model UserProfile {
-  id            String   @id @default(uuid())
-  userId        String   @unique
+  id            String         @id @default(cuid())
+  userId        String         @unique
+  
+  // Basic Information
   name          String
-  email         String   @unique
+  email         String         @unique
   phone         String?
+  profileImage  String?
+  
+  // Business Information
   businessName  String?
+  businessType  BusinessType?
+  designation   String?
+  company       String?
+  
+  // Profile Details
   bio           String?
+  website       String?
+  linkedinUrl   String?
+  twitterUrl    String?
+  
+  // Professional Information
+  experience    Int?           // Years of experience
+  skills        String[]
+  certifications String[]
+  languages     String[]
+  
+  // Membership & Status
+  membershipType MembershipType @default(BASIC)
+  isVerified    Boolean        @default(false)
+  isPro         Boolean        @default(false)
   proSince      DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  // Relations:
+  
+  // Privacy Settings
+  profileVisibility ProfileVisibility @default(PUBLIC)
+  showEmail     Boolean        @default(false)
+  showPhone     Boolean        @default(false)
+  
+  // Location
+  address       UserAddress?
+  
+  // Relations
   profileViews  ProfileView[]
   inquiries     Inquiry[]
   orders        Order[]
   activities    UserActivity[]
   kyc           UserKyc?
+  preferences   UserPreferences?
+  
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("user_profiles")
+}
+
+model UserAddress {
+  id          String      @id @default(cuid())
+  userId      String      @unique
+  user        UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  
+  street      String?
+  city        String
+  state       String
+  pincode     String
+  country     String      @default("India")
+  
+  // Coordinates
+  latitude    Decimal?    @db.Decimal(10, 8)
+  longitude   Decimal?    @db.Decimal(11, 8)
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("user_addresses")
 }
 
 model UserKyc {
-  id        String   @id @default(uuid())
-  userId    String   @unique
-  panNumber String
-  gstNumber String?
-  panMeta   Json?
-  gstMeta   Json?
-  status    String   @default("PENDING")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String      @id @default(cuid())
+  userId        String      @unique
+  user          UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  
+  // Identity Documents
+  panNumber     String?
+  aadhaarNumber String?
+  gstNumber     String?
+  
+  // Document Metadata
+  panMeta       Json?
+  aadhaarMeta   Json?
+  gstMeta       Json?
+  
+  // Verification Status
+  status        KYCStatus   @default(PENDING)
+  verifiedAt    DateTime?
+  verifiedBy    String?     // Admin ID who verified
+  
+  // Document URLs
+  panDocument   String?
+  aadhaarDocument String?
+  gstDocument   String?
+  addressProof  String?
+  
+  // Rejection Details
+  rejectionReason String?
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("user_kyc")
+}
+
+model UserPreferences {
+  id                String      @id @default(cuid())
+  userId            String      @unique
+  user              UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  
+  // Communication Preferences
+  emailNotifications Boolean    @default(true)
+  smsNotifications  Boolean     @default(true)
+  pushNotifications Boolean     @default(true)
+  
+  // Business Preferences
+  interestedCategories String[]
+  preferredLocations String[]
+  budgetRange       Json?
+  
+  // Privacy Preferences
+  allowProfileViews Boolean     @default(true)
+  allowDirectContact Boolean    @default(true)
+  showOnlineStatus  Boolean     @default(true)
+  
+  // Language & Timezone
+  preferredLanguage String      @default("en")
+  timezone          String?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@map("user_preferences")
 }
 
 model ProfileView {
-  id        String   @id @default(uuid())
-  userId    String
-  viewedAt  DateTime @default(now())
-  // If you track who viewed, add viewerId String?
-  // Relations
-  user      UserProfile @relation(fields: [userId], references: [userId])
+  id         String      @id @default(cuid())
+  userId     String
+  user       UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  viewerId   String?     // Who viewed the profile
+  viewerType String?     // Type of viewer (user, business, etc.)
+  
+  // Context
+  source     String?     // How they found the profile
+  ipAddress  String?
+  userAgent  String?
+  
+  viewedAt   DateTime    @default(now())
+
+  @@map("profile_views")
+  @@index([userId, viewedAt])
 }
 
 model Inquiry {
-  id            String   @id @default(uuid())
-  userId        String
-  status        String   // e.g. "open", "pending", "rejected", etc.
-  createdAt     DateTime @default(now())
-  // Track response time in minutes (nullable for unanswered)
+  id                  String         @id @default(cuid())
+  userId              String
+  user                UserProfile    @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  
+  // Inquiry Details
+  subject             String
+  message             String
+  inquiryType         InquiryType    @default(GENERAL)
+  category            String?
+  
+  // Source
+  source              String?        // Where the inquiry came from
+  referenceId         String?        // Reference to listing, business, etc.
+  
+  // Contact Information
+  contactName         String
+  contactEmail        String
+  contactPhone        String?
+  
+  // Status & Response
+  status              InquiryStatus  @default(OPEN)
+  priority            Priority       @default(NORMAL)
+  response            String?
+  respondedAt         DateTime?
   responseTimeMinutes Int?
-  // Relation
-  user    UserProfile @relation(fields: [userId], references: [userId])
-  order   Order?      @relation(fields: [orderId], references: [id])
-  orderId String?
+  
+  // Relations
+  order               Order?         @relation(fields: [orderId], references: [id])
+  orderId             String?
+  
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@map("inquiries")
 }
 
 model Order {
-  id        String   @id @default(uuid())
-  userId    String
-  status    String   // e.g. "completed", "canceled"
-  createdAt DateTime @default(now())
-  user      UserProfile @relation(fields: [userId], references: [userId])
+  id          String      @id @default(cuid())
+  userId      String
+  user        UserProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  
+  // Order Details
+  orderNumber String      @unique
+  amount      Decimal     @db.Decimal(15, 2)
+  currency    String      @default("INR")
+  
+  // Items
+  items       Json        // Order items details
+  
+  // Status
+  status      OrderStatus @default(PENDING)
+  
+  // Dates
+  orderDate   DateTime    @default(now())
+  deliveryDate DateTime?
+  completedAt DateTime?
+  
+  // Relations
+  inquiries   Inquiry[]
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("orders")
 }
 
 model UserActivity {
-  id        String   @id @default(uuid())
-  userId    String
-  activity  String   // e.g. "login", "profile_update", etc.
-  timestamp DateTime @default(now())
-  user      UserProfile @relation(fields: [userId], references: [userId])
+  id          String         @id @default(cuid())
+  userId      String
+  user        UserProfile    @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  
+  // Activity Details
+  activity    ActivityType
+  description String?
+  
+  // Context
+  entityType  String?        // What was affected
+  entityId    String?        // ID of affected entity
+  metadata    Json?
+  
+  // Session Info
+  sessionId   String?
+  ipAddress   String?
+  userAgent   String?
+  
+  timestamp   DateTime       @default(now())
+
+  @@map("user_activities")
+  @@index([userId, timestamp])
+}
+
+enum BusinessType {
+  SOLE_PROPRIETORSHIP
+  PARTNERSHIP
+  LIMITED_LIABILITY_PARTNERSHIP
+  PRIVATE_LIMITED
+  PUBLIC_LIMITED
+  ONE_PERSON_COMPANY
+  SECTION_8_COMPANY
+  COOPERATIVE
+  NGO
+  TRUST
+  OTHER
+}
+
+enum MembershipType {
+  BASIC
+  PREMIUM
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+  MEMBERS_ONLY
+  BUSINESS_ONLY
+}
+
+enum KYCStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+enum InquiryType {
+  GENERAL
+  PRODUCT
+  SERVICE
+  PARTNERSHIP
+  INVESTMENT
+  SUPPORT
+  COMPLAINT
+}
+
+enum InquiryStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING
+  RESPONDED
+  RESOLVED
+  CLOSED
+  REJECTED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+
+enum ActivityType {
+  LOGIN
+  LOGOUT
+  PROFILE_UPDATE
+  KYC_SUBMISSION
+  ORDER_PLACED
+  INQUIRY_SENT
+  DOCUMENT_UPLOAD
+  PASSWORD_CHANGE
+  EMAIL_CHANGE
+  PHONE_VERIFICATION
+  SUBSCRIPTION_CHANGE
+  PREFERENCE_UPDATE
 }

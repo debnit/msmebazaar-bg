@@ -1,10 +1,201 @@
+// MSME Service Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model MSME {
-  id           String   @id @default(uuid())
-  ownerId      String
-  gstNumber    String   @unique
-  businessName String
-  address      String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  listings     Listing[]
+  id                String         @id @default(cuid())
+  ownerId           String
+  
+  // Business Registration
+  businessName      String
+  legalName         String?
+  gstNumber         String?        @unique
+  panNumber         String?        @unique
+  cinNumber         String?        @unique
+  udyamNumber       String?        @unique
+  
+  // Business Details
+  businessType      MSMEType
+  category          BusinessCategory
+  subcategory       String?
+  establishedDate   DateTime?
+  incorporationDate DateTime?
+  
+  // Contact Information
+  email             String
+  phone             String
+  website           String?
+  
+  // Address
+  address           BusinessAddress?
+  
+  // Financial Information
+  annualTurnover    Decimal?       @db.Decimal(15, 2)
+  employeeCount     Int?
+  exportTurnover    Decimal?       @db.Decimal(15, 2)
+  
+  // Verification & Compliance
+  isVerified        Boolean        @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
+  complianceScore   Decimal?       @db.Decimal(3, 2)
+  
+  // Banking
+  bankingDetails    Json?
+  
+  // Documents
+  documents         MSMEDocument[]
+  
+  // Status
+  status            MSMEStatus     @default(ACTIVE)
+  
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@map("msmes")
+}
+
+model BusinessAddress {
+  id          String @id @default(cuid())
+  msmeId      String @unique
+  msme        MSME   @relation(fields: [msmeId], references: [id], onDelete: Cascade)
+  
+  street      String
+  city        String
+  state       String
+  pincode     String
+  country     String @default("India")
+  
+  // Coordinates for mapping
+  latitude    Decimal? @db.Decimal(10, 8)
+  longitude   Decimal? @db.Decimal(11, 8)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("business_addresses")
+}
+
+model MSMEDocument {
+  id            String          @id @default(cuid())
+  msmeId        String
+  msme          MSME            @relation(fields: [msmeId], references: [id], onDelete: Cascade)
+  
+  documentType  DocumentType
+  documentName  String
+  documentUrl   String
+  documentNumber String?
+  
+  status        DocumentStatus  @default(SUBMITTED)
+  uploadedAt    DateTime        @default(now())
+  verifiedAt    DateTime?
+  expiresAt     DateTime?
+  
+  notes         String?
+  
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@map("msme_documents")
+}
+
+model MSMEProfile {
+  id              String   @id @default(cuid())
+  msmeId          String   @unique
+  
+  // Business Description
+  description     String?
+  mission         String?
+  vision          String?
+  
+  // Products & Services
+  products        Json?
+  services        Json?
+  certifications  String[]
+  awards          String[]
+  
+  // Market Information
+  targetMarkets   String[]
+  clientTypes     String[]
+  
+  // Capabilities
+  productionCapacity String?
+  qualityStandards   String[]
+  
+  // Media
+  logo            String?
+  images          String[]
+  videos          String[]
+  brochures       String[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("msme_profiles")
+}
+
+enum MSMEType {
+  MICRO
+  SMALL
+  MEDIUM
+  STARTUP
+}
+
+enum BusinessCategory {
+  MANUFACTURING
+  TRADING
+  SERVICE
+  AGRICULTURE
+  TECHNOLOGY
+  HEALTHCARE
+  EDUCATION
+  CONSTRUCTION
+  TEXTILE
+  FOOD_PROCESSING
+  AUTOMOTIVE
+  CHEMICALS
+  ELECTRONICS
+  RENEWABLE_ENERGY
+  OTHER
+}
+
+enum VerificationStatus {
+  PENDING
+  IN_PROGRESS
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum MSMEStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum DocumentType {
+  UDYAM_REGISTRATION
+  GST_CERTIFICATE
+  PAN_CARD
+  INCORPORATION_CERTIFICATE
+  MOA_AOA
+  BANK_STATEMENT
+  ITR
+  FINANCIAL_STATEMENT
+  LICENSE_PERMIT
+  OTHER
+}
+
+enum DocumentStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  EXPIRED
 }
