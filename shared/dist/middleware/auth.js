@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireRole = requireRole;
-exports.requireAdmin = requireAdmin;
+exports.requireAdmin = exports.requireRole = void 0;
 const auth_1 = require("../auth");
 const types_1 = require("../types");
 //const JWT_SECRET = process.env.JWT_SECRET || "test_jwt_secret_for_unit_tests";
@@ -18,6 +17,7 @@ function requireRole(...allowedRoles) {
         next();
     };
 }
+exports.requireRole = requireRole;
 function requireAdmin(req, res, next) {
     const user = (0, auth_1.getSessionUser)(req);
     if (!user ||
@@ -26,4 +26,5 @@ function requireAdmin(req, res, next) {
     }
     next();
 }
+exports.requireAdmin = requireAdmin;
 //# sourceMappingURL=auth.js.map

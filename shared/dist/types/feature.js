@@ -32,7 +32,7 @@ var Feature;
     Feature["RECOMMENDATIONS"] = "RECOMMENDATIONS";
     Feature["MATCHMAKING"] = "MATCHMAKING";
     Feature["SEARCHMSME"] = "SEARCHMSME";
-})(Feature || (exports.Feature = Feature = {}));
+})(Feature = exports.Feature || (exports.Feature = {}));
 var UserRole;
 (function (UserRole) {
     UserRole["ADMIN"] = "admin";
@@ -43,11 +43,11 @@ var UserRole;
     UserRole["AGENT"] = "agent";
     UserRole["INVESTOR"] = "investor";
     UserRole["DEVELOPER"] = "developer";
-})(UserRole || (exports.UserRole = UserRole = {}));
+})(UserRole = exports.UserRole || (exports.UserRole = {}));
 var AccessLevel;
 (function (AccessLevel) {
     AccessLevel["READ"] = "READ";
     AccessLevel["WRITE"] = "WRITE";
     AccessLevel["ADMIN"] = "ADMIN";
-})(AccessLevel || (exports.AccessLevel = AccessLevel = {}));
+})(AccessLevel = exports.AccessLevel || (exports.AccessLevel = {}));
 //# sourceMappingURL=feature.js.map

@@ -19,7 +19,7 @@ import { Config } from "./config";
 const app = express();
 
 // Attach JWT middleware once globally to verify tokens and attach user info
-app.use(jwtMw(Config.jwtSecret, true));  // 'true' means reject unauthorized immediately
+app.use(jwtMw(Config["jwtSecret"], true));  // 'true' means reject unauthorized immediately
 
 app.use("/api", routes);
 app.use("/api/recommendations", recommendationProxy);
@@ -36,6 +36,6 @@ app.use(agentProxyRouter);
 
 app.use(errorHandler);
 
-app.listen(process.env.GATEWAY_PORT || 3000, () => {
-  console.log(`API Gateway running on port ${process.env.GATEWAY_PORT || 6000}`);
+app.listen(process.env["GATEWAY_PORT"] || 6000, () => {
+  console.log(`API Gateway running on port ${process.env["GATEWAY_PORT"] || 6000}`);
 });

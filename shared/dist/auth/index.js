@@ -3,12 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createJwtToken = createJwtToken;
-exports.verifyJwtToken = verifyJwtToken;
-exports.hashPassword = hashPassword;
-exports.verifyPassword = verifyPassword;
-exports.getSessionUser = getSessionUser;
-exports.jwtMw = jwtMw;
+exports.jwtMw = exports.getSessionUser = exports.verifyPassword = exports.hashPassword = exports.verifyJwtToken = exports.createJwtToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 // JWT Sign
@@ -19,6 +14,7 @@ function createJwtToken(payload, secret, expiresIn = "1d", options = {}) {
     };
     return jsonwebtoken_1.default.sign(payload, secret, signOptions);
 }
+exports.createJwtToken = createJwtToken;
 // JWT verification helper; returns typed payload or null on failure
 function verifyJwtToken(token, secret) {
     try {
@@ -28,14 +24,17 @@ function verifyJwtToken(token, secret) {
         return null;
     }
 }
+exports.verifyJwtToken = verifyJwtToken;
 // Password hashing using bcrypt (consider argon2 for stronger security)
 async function hashPassword(password, saltRounds = 12) {
     return bcryptjs_1.default.hash(password, saltRounds);
 }
+exports.hashPassword = hashPassword;
 // Password verification
 async function verifyPassword(password, hash) {
     return bcryptjs_1.default.compare(password, hash);
 }
+exports.verifyPassword = verifyPassword;
 // Session user extracted from req
 //export interface SessionUser extends BaseJwtClaims {
 // Optionally include other session fields
@@ -48,6 +47,7 @@ function getSessionUser(req) {
         return req.session.user;
     return null;
 }
+exports.getSessionUser = getSessionUser;
 // JWT Express middleware, usable in any Node/Express service, supports strict rejectOnInvalid
 function jwtMw(secret, rejectOnInvalid = false) {
     return (req, res, next) => {
@@ -68,4 +68,5 @@ function jwtMw(secret, rejectOnInvalid = false) {
         next();
     };
 }
+exports.jwtMw = jwtMw;
 //# sourceMappingURL=index.js.map

@@ -19,7 +19,8 @@
     }
   },
   "include": [
-    "src/**/*",
+    "*.ts","**/*.ts",
+    "types/**/*.ts",
     "types/**/*.d.ts"
   ],
   "exclude": [

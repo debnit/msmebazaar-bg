@@ -14,7 +14,7 @@ router.use(
   requireAuth,
   requireFeature(Feature.ADMIN_SERVICES), // Gates entire admin API to allowed users
   createProxyMiddleware({
-    target: process.env.ADMIN_SERVICE_URL || "http://localhost:8016",
+    target: process.env["ADMIN_SERVICE_URL"] || "http://localhost:8016",
     changeOrigin: true,
     pathRewrite: { "^/admin": "/admin" },
   })

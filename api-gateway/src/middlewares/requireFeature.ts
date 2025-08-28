@@ -10,9 +10,9 @@ import { SessionUser } from "@shared/types/user";
  * Checks that a logged-in user has permission to use the given feature.
  */
 export const requireFeature = (feature: Feature) => {
-  return (req: Request & { user?: SessionUser }, res: Response, next: NextFunction) => {
+  return (req: Request & { user?: SessionUser }, res: Response, next: NextFunction)  => {
     if (!req.user) {
-      return res.status(401).json({ success: false, message: "Authentication required" });
+       res.status(401).json({ success: false, message: "Authentication required" });
     }
 
     const user = req.user;

@@ -6,7 +6,7 @@ import type {
   LoanListResponse,
   LoanApplicationForm,
 } from "@/types/loan";
-import type { Product, Recommendation, ChatSession } from "@/types/marketplace";
+import type { Product, Recommendation, chatSession } from "@/types/marketplace";
 import type { Order } from "@/types/orders";
 import type { User } from "@/types/user"; // assuming you have this
 import * as matchmakingApi from "./matchmaking.api";
@@ -48,7 +48,7 @@ class ApiClient {
   private authToken: string | null = null;
   constructor(config: ApiClientConfig = {}) {
     this.config = {
-      baseURL: config.baseURL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001",
+      baseURL: config.baseURL || process.env["NEXT_PUBLIC_API_URL"] || "http://localhost:7000",
       timeout: config.timeout || 30000,
       retries: config.retries || 3,
       retryDelay: config.retryDelay || 1000,
@@ -70,7 +70,7 @@ class ApiClient {
   public getAuthToken() { return this.authToken; }
   private getHeaders(custom?: Record<string, string>) {
     const headers = { ...this.config.defaultHeaders, ...custom };
-    if (this.authToken) headers.Authorization = `Bearer ${this.authToken}`;
+    if (this.authToken) headers["Authorization"] = `Bearer ${this.authToken}`;
     return headers;
   }
   private async makeRequest<T>(url: string, options: RequestInit = {}, attempt = 1): Promise<ApiResponse<T>> {
@@ -113,7 +113,7 @@ class ApiClient {
     return this.makeRequest<T>(fullUrl, { method: "GET" });
   }
   public post<T>(url: string, data?: any) {
-    return this.makeRequest<T>(url, { method: "POST", body: data instanceof FormData ? data : data ? JSON.stringify(data) : undefined });
+    return this.makeRequest<T>(url, { method: "POST", body: data instanceof FormData ? data : data ? JSON.stringify(data) : null });
   }
   public put<T>(url: string, data?: any) {
     return this.makeRequest<T>(url, { method: "PUT", body: JSON.stringify(data) });
@@ -175,7 +175,7 @@ export const api = {
     getVendor: (id: string) => apiClient.get(`/marketplace/vendors/${id}`),
   },
   messaging: {
-    getInvestorChats: () => apiClient.get<ChatSession[]>("/messaging/investor"),
+    getInvestorChats: () => apiClient.get<chatSession[]>("/messaging/investor"),
     sendMessage: (chatId: string, content: string) => apiClient.post(`/messaging/${chatId}`, { content }),
   },
   orders: {

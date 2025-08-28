@@ -1,9 +1,7 @@
 "use strict";
 // /shared/session/index.ts
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.setSessionCookie = setSessionCookie;
-exports.getTokenFromRequest = getTokenFromRequest;
-exports.getSessionUserFromRequest = getSessionUserFromRequest;
+exports.getSessionUserFromRequest = exports.getTokenFromRequest = exports.setSessionCookie = void 0;
 function setSessionCookie(res, // Express Response or Next.js ServerResponse
 token, opts = {}) {
     const { cookieName = "session", secure = true, maxAge = 7 * 24 * 60 * 60 * 1000, domain, path = "/", sameSite = "lax" } = opts;
@@ -14,6 +12,7 @@ token, opts = {}) {
         (sameSite ? `; SameSite=${sameSite}` : "");
     res.setHeader("Set-Cookie", cookieVal);
 }
+exports.setSessionCookie = setSessionCookie;
 function getTokenFromRequest(req, opts = {}) {
     const { cookieName = "session" } = opts;
     // Check cookie parsing (typical Express or Next.js req)
@@ -33,6 +32,7 @@ function getTokenFromRequest(req, opts = {}) {
     }
     return null;
 }
+exports.getTokenFromRequest = getTokenFromRequest;
 /**
  * Extracts typed SessionUser from request by decoding a verified JWT token.
  * Returns null if token is missing or invalid.
@@ -49,4 +49,5 @@ function getSessionUserFromRequest(req, secret, opts = {}) {
         return null;
     }
 }
+exports.getSessionUserFromRequest = getSessionUserFromRequest;
 //# sourceMappingURL=index.js.map

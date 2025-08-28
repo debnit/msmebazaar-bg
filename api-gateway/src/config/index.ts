@@ -5,7 +5,7 @@ import{ servicesConfig } from "./services";
 export const Config : { [key: string]: any } = {
   port: env.PORT || 6000,
   jwtSecret: env.JWT_SECRET,
-  frontendUrl: env.FRONTEND_URL,
+  frontendUrl: env.FRONTEND_URL ||3000,
   nodeEnv: env.NODE_ENV,
   logLevel: env.LOG_LEVEL,
   services: servicesConfig

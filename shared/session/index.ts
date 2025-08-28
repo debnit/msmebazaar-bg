@@ -59,7 +59,8 @@ export function getTokenFromRequest(
       .split(";")
       .find((c: string) => c.trim().startsWith(`${cookieName}=`));
 
-    if (match) return match.trim().split("=")[1];
+    if (match) 
+      match.trim().split("=")[1];
   }
 
   return null;
