@@ -7,19 +7,25 @@
     "lib": ["ES2022"],
     "outDir": "dist",
     "rootDir": ".",
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "moduleResolution": "node",
     "noEmit": false,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "paths": {
-      "@/*": ["./*"],
-      "@shared/*": ["../../shared/src/*"]
+      "@/*": ["./src/*"],
+      "@msmebazaar/shared": ["../../shared"],
+      "@msmebazaar/shared/*": ["../../shared/*"],
+      "@msmebazaar/types": ["../../shared/types"],
+      "@msmebazaar/types/*": ["../../shared/types/*"]
     }
   },
   "include": [
-    "src/**/*"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

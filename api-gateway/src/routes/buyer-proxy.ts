@@ -4,9 +4,9 @@ import { createProxyMiddleware } from "http-proxy-middleware";
 import { requireAuth } from "../middlewares/auth";
 import { requireFeature } from "../middlewares/requireFeature";
 
-import { Feature } from "@shared/config/featureFlagTypes";
+import { Feature } from "@msmebazaar/types/feature";
 
-const router = Router();
+const router: Router = Router();
 
 // Apply auth and feature gating before proxying requests to buyer service
 router.use(

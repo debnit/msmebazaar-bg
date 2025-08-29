@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import * as paymentController from '../controllers/payment.controller';
-import { jwtMw } from '@shared/auth';
-import { requireRole } from '@shared/middleware/auth';
-import { UserRole } from '@shared/types/feature';
-import { addUserCapabilities } from '@shared/middleware/featureGate';
+import { jwtMw } from '@msmebazaar/shared/auth';
+import { requireRole } from '@msmebazaar/shared/middleware/auth';
+import { UserRole } from '@msmebazaar/types/feature';
+import { addUserCapabilities } from '@msmebazaar/shared/middleware/featureGate';
 
 const router = Router();
 

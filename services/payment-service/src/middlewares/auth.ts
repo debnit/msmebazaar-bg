@@ -1,8 +1,8 @@
 // services/payment-service/src/middlewares/auth.ts
 
 import { Request, Response, NextFunction } from "express";
-import { getSessionUser, jwtMw } from "@shared/auth"; // Use your configured path alias
-import { UserRole } from "@shared/types/feature";
+import { getSessionUser, jwtMw } from "@msmebazaar/shared/auth"; // Use your configured path alias
+import { UserRole } from "@msmebazaar/types/feature";
 import { UnauthorizedError, ForbiddenError } from "../utils/errors";
 import { logger } from "../utils/logger";
 

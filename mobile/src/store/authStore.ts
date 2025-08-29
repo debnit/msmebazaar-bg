@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SessionUser } from "@shared/types/user";
+import { SessionUser } from "@msmebazaar/types/user";
 import { apiClient } from "@mobile/api/apiClient";
 
 interface AuthState {

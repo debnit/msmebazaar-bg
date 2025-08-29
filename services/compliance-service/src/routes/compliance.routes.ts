@@ -2,7 +2,7 @@ import { Router } from "express";
 import requireAuth from "../middlewares/requireAuth";
 import * as controller from "../controllers/compliance.controller";
 import { validateRequest } from "../middlewares/validateRequest";
-import { complianceDocSchema } from "@shared/validation/compliance.schema";
+import { complianceDocSchema } from "@msmebazaar/shared/validation/compliance.schema";
 
 const router = Router();
 router.use(requireAuth);

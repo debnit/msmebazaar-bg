@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { LoanService } from '../services/loan.service';
-import { getSessionUser } from '@shared/auth';
-import { requireRole } from '@shared/middleware/auth';
-import { UserRole } from '@shared/types/feature';
+import { getSessionUser } from '@msmebazaar/shared/auth';
+import { requireRole } from '@msmebazaar/shared/middleware/auth';
+import { UserRole } from '@msmebazaar/types/feature';
 import { logger } from '../utils/logger';
 
 export const createLoanApplication = async (req: Request, res: Response, next: NextFunction) => {

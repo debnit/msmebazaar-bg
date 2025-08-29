@@ -1,6 +1,7 @@
-// /shared/types/index.ts
-export * from "./api";
-export * from "./user";
-export * from "./feature";
-export * from "./payments";
-export * from "./ml-services";
+// Shared types for MSMEBazaar platform
+export * from './feature';
+export * from './user';
+export * from './business';
+export * from './payment';
+export * from './loan';
+export * from './notification';

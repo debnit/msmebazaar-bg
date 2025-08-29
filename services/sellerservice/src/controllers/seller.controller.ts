@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { SellerService } from '../services/seller.service';
-import { getSessionUser } from '@shared/auth';
+import { getSessionUser } from '@msmebazaar/shared/auth';
 import { logger } from '../utils/logger';
 
 export const createListing = async (req: Request, res: Response, next: NextFunction) => {

@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.canUserAccessFeature = void 0;
-const featureFlags_json_1 = __importDefault(require("../../../shared/config/featureFlags.json"));
+const featureFlags_json_1 = __importDefault(require("@msmebazaar/shared/config/featureFlags.json"));
 const canUserAccessFeature = (feature, ctx) => {
     const f = featureFlags_json_1.default[feature];
     if (!f?.enabled)

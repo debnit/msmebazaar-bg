@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { BuyerService, SearchFilters } from '../services/buyer.service';
-import { getSessionUser } from '@shared/auth';
+import { getSessionUser } from '@msmebazaar/shared/auth';
 import { logger } from '../utils/logger';
 
 export const getBuyerProfile = async (req: Request, res: Response, next: NextFunction) => {

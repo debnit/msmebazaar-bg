@@ -1,0 +1,7 @@
+packages:
+  - "frontend"
+  - "mobile"
+  - "shared"
+  - "shared/types"
+  - "api-gateway"
+  - "services/*"

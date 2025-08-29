@@ -1,4 +1,4 @@
-import { SessionUser } from '@shared/types/user';
+import { SessionUser } from '@msmebazaar/types/user';
 
 export class ExitService {
   static async listPrograms(user: SessionUser) {

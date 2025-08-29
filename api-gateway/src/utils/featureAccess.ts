@@ -1,6 +1,6 @@
-import { UserRole } from "@shared/types";
-import { Feature, FeatureMeta } from "@shared/config/featureFlagTypes";
-import featureFlags from "@shared/config/featureFlags.json";
+import { UserRole } from "@msmebazaar/types";
+import { Feature, FeatureMeta } from "@msmebazaar/types/feature";
+import featureFlags from "@msmebazaar/shared/config/featureFlags.json";
 
 export const canUserAccessFeature = (
   feature: Feature,

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { getSessionUser } from "@shared/auth";
+import { getSessionUser } from "@msmebazaar/shared/auth";
 import { z } from "zod";
-import { kycUploadSchema } from "@shared/validation/kyc.schema";
+import { kycUploadSchema } from "@msmebazaar/shared/validation/kyc.schema";
 import { KycService } from "../services/kyc.service";
 
 export async function uploadKyc(req: Request, res: Response, next: NextFunction) {

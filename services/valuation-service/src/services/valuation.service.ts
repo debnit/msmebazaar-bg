@@ -1,4 +1,4 @@
-import { SessionUser } from '@shared/types/user';
+import { SessionUser } from '@msmebazaar/types/user';
 
 export class ValuationService {
   static async calculate(user: SessionUser, turnover: number) {

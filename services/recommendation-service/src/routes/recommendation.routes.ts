@@ -2,7 +2,7 @@ import { Router } from "express";
 import requireAuth from "../middlewares/requireAuth";
 import { RecommendationController } from '../controllers/recommendation.controller';
 import { validateRequest } from "../middlewares/validateRequest";
-import { recommendationRequestSchema } from "@shared/validation/recommendation.schema";
+import { recommendationRequestSchema } from "@msmebazaar/shared/validation/recommendation.schema";
 
 const router = Router();
 router.use(requireAuth);

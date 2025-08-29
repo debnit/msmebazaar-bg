@@ -3,9 +3,9 @@ import { Router } from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { requireAuth } from "../middlewares/auth";
 import { requireFeature } from "../middlewares/requireFeature";
-import { Feature } from "@shared/config/featureFlagTypes";
+import { Feature } from "@msmebazaar/types/feature";
 
-const router = Router();
+const router: Router = Router();
 
 // Investor service routes with authentication and feature gating
 router.use(

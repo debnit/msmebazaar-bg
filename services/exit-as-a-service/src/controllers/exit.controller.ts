@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ExitService } from '../services/exit.service';
-import { getSessionUser } from '@shared/auth';
+import { getSessionUser } from '@msmebazaar/shared/auth';
 
 export const listPrograms = async (req: Request, res: Response, next: NextFunction) => {
   try {

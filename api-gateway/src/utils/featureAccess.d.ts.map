@@ -1,0 +1,1 @@
+{"version":3,"file":"featureAccess.d.ts","sourceRoot":"","sources":["featureAccess.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,OAAO,EAAe,MAAM,2BAA2B,CAAC;AAGjE,eAAO,MAAM,oBAAoB,GAC/B,SAAS,OAAO,EAChB,KAAK;IAAE,IAAI,EAAE,MAAM,CAAC;IAAC,KAAK,EAAE,OAAO,CAAC;IAAC,MAAM,EAAE,MAAM,CAAA;CAAE,KACpD,OAgBF,CAAC"}

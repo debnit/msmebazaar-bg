@@ -13,7 +13,7 @@ import superadminProxyRouter from "./routes/superadmin-proxy";
 import investorProxyRouter from "./routes/investor-proxy";
 import loanProxyRouter from "./routes/loan-proxy";
 import agentProxyRouter from "./routes/agent-proxy";
-import { jwtMw } from "@shared/auth";    // Import shared JWT middleware
+import { jwtMw } from "@msmebazaar/shared/auth";    // Import shared JWT middleware
 import { Config } from "./config";
 
 const app = express();

@@ -13,15 +13,24 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "typeRoots": ["./types", "./node_modules/@types"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@msmebazaar/shared": ["."],
+      "@msmebazaar/shared/*": ["./*"],
+      "@msmebazaar/types": ["./types"],
+      "@msmebazaar/types/*": ["./types/*"]
     }
   },
   "include": [
-    "*.ts","**/*.ts",
-    "types/**/*.ts",
-    "types/**/*.d.ts"
+    "index.ts",
+    "auth/**/*.ts",
+    "middleware/**/*.ts",
+    "services/**/*.ts",
+    "utils/**/*.ts",
+    "validation/**/*.ts",
+    "types/**/*.ts"
   ],
   "exclude": [
     "node_modules", 

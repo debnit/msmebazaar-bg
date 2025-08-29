@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import * as authController from '../controllers/auth.controller';
 import { validateRequest } from '../middlewares/validateRequest';
-import { registerSchema, loginSchema } from '@shared/validation/auth.schema';
+import { registerSchema, loginSchema } from '@msmebazaar/shared/validation/auth.schema';
 import { authRateLimiter, registerRateLimiter } from '../middlewares/rateLimiter';
-import { jwtMw } from '@shared/auth';
-import { requireRole } from '@shared/middleware/auth';
-import { UserRole } from '@shared/types/feature';
+import { jwtMw } from '@msmebazaar/shared/auth';
+import { requireRole } from '@msmebazaar/shared/middleware/auth';
+import { UserRole } from '@msmebazaar/types/feature';
 
 const router = Router();
 

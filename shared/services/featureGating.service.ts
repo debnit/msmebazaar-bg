@@ -129,7 +129,15 @@ export const FEATURE_ROLE_MAPPING: Record<Feature, { roles: UserRole[], proOnly:
   [Feature.ORDERS_MANAGEMENT]: { roles: [UserRole.BUYER, UserRole.SELLER], proOnly: false },
   [Feature.RECOMMENDATIONS]: { roles: [UserRole.BUYER, UserRole.SELLER], proOnly: false },
   [Feature.MATCHMAKING]: { roles: [UserRole.BUYER, UserRole.SELLER], proOnly: false },
-  [Feature.SEARCHMSME]: { roles: [UserRole.BUYER, UserRole.INVESTOR], proOnly: false }
+  [Feature.SEARCHMSME]: { roles: [UserRole.BUYER, UserRole.INVESTOR], proOnly: false },
+  [Feature.SEARCHMATCHMAKING]: { roles: [UserRole.BUYER, UserRole.SELLER], proOnly: false },
+  [Feature.ADMIN_SERVICES]: { roles: [UserRole.ADMIN], proOnly: false },
+  [Feature.SUPER_ADMIN_SERVICES]: { roles: [UserRole.SUPER_ADMIN], proOnly: false },
+  [Feature.AGENT_SERVICES]: { roles: [UserRole.AGENT], proOnly: false },
+  [Feature.INVESTOR_SERVICES]: { roles: [UserRole.INVESTOR], proOnly: false },
+  [Feature.LOAN_SERVICES]: { roles: [UserRole.MSME_OWNER], proOnly: false },
+  [Feature.BUYER_SERVICES]: { roles: [UserRole.BUYER], proOnly: false },
+  [Feature.SELLER_SERVICES]: { roles: [UserRole.SELLER], proOnly: false }
 };
 
 export class FeatureGatingService {

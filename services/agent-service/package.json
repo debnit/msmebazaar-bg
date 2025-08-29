@@ -2,6 +2,7 @@
   "name": "agent-service",
   "version": "1.0.0",
   "scripts": {
+    "type-check": "tsc --noEmit",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
@@ -13,10 +14,11 @@
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
-    "@shared/types": "workspace:*",
-    "@shared/auth": "workspace:*",
-    "@shared/middleware": "workspace:*",
-    "@shared/services": "workspace:*",
+    "@msmebazaar/types": "workspace:*",
+    "@msmebazaar/shared": "workspace:*",
+    "@msmebazaar/shared": "workspace:*",
+    "@msmebazaar/shared": "workspace:*",
+    "envalid": "^8.1.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -25,7 +27,7 @@
     "helmet": "^7.0.0",
     "jsonwebtoken": "^9.0.0",
     "winston": "^3.10.0",
-    "zod": "^3.20.0"
+    "zod": "^3.25.67"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
@@ -43,6 +45,6 @@
     "ts-jest": "^29.0.0",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^4.9.5"
+    "typescript": "^5.3.0"
   }
 }

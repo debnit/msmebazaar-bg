@@ -1,10 +1,10 @@
 import request from 'supertest';
 import app from '../index';
-import { SessionUser } from '@shared/types/user';
-import { UserRole } from '@shared/types/feature';
+import { SessionUser } from '@msmebazaar/types/user';
+import { UserRole } from '@msmebazaar/types/feature';
 
 // Mock JWT middleware
-jest.mock('@shared/auth', () => ({
+jest.mock('@msmebazaar/shared/auth', () => ({
   jwtMw: () => (req: any, res: any, next: any) => {
     req.user = mockUser;
     next();
@@ -13,7 +13,7 @@ jest.mock('@shared/auth', () => ({
 }));
 
 // Mock role middleware
-jest.mock('@shared/middleware/auth', () => ({
+jest.mock('@msmebazaar/shared/middleware/auth', () => ({
   requireRole: (...roles: string[]) => (req: any, res: any, next: any) => {
     if (roles.includes(req.user?.roles[0])) {
       next();
@@ -52,8 +52,8 @@ describe('Buyer Service Integration Tests', () => {
 
     it('should return 401 without authentication', async () => {
       // Temporarily remove user from request
-      const originalJwtMw = require('@shared/auth').jwtMw;
-      require('@shared/auth').jwtMw = () => (req: any, res: any, next: any) => {
+      const originalJwtMw = require('@msmebazaar/shared/auth').jwtMw;
+      require('@msmebazaar/shared/auth').jwtMw = () => (req: any, res: any, next: any) => {
         next();
       };
 
@@ -63,7 +63,7 @@ describe('Buyer Service Integration Tests', () => {
       expect(response.status).toBe(401);
 
       // Restore original mock
-      require('@shared/auth').jwtMw = originalJwtMw;
+      require('@msmebazaar/shared/auth').jwtMw = originalJwtMw;
     });
   });
 

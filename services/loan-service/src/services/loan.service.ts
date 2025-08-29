@@ -1,8 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { SessionUser } from '@shared/types/user';
-import { FeatureGatingService } from '@shared/services/featureGating.service';
-import { Feature } from '@shared/types/feature';
-import { UserRole } from '@shared/types/feature';
+import { SessionUser } from '@msmebazaar/types/user';
+import { FeatureGatingService } from '@msmebazaar/shared/services/featureGating.service';
+import { Feature } from '@msmebazaar/types/feature';
+import { UserRole } from '@msmebazaar/types/feature';
 import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();

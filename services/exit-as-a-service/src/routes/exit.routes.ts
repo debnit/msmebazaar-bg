@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { jwtMw } from '@shared/auth';
+import { jwtMw } from '@msmebazaar/shared/auth';
 import { listPrograms, expressInterest } from '../controllers/exit.controller';
 
 const router = Router();

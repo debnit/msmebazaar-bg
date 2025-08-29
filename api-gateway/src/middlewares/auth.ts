@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { getSessionUser } from "@shared/auth/index";
+import { getSessionUser } from "@msmebazaar/shared/auth/index";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const user = getSessionUser(req);

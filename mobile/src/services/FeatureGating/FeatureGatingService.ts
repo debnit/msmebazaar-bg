@@ -1,4 +1,4 @@
-import { UserRole } from "@shared/types/feature";
+import { UserRole } from "@msmebazaar/types/feature";
 
 export interface FeatureLimit {
   daily?: number;

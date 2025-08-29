@@ -4,8 +4,8 @@ import { Config } from '../config/env';
 import { TokenManager } from '../utils/tokenManager';
 import { AppError } from '../middlewares/errorHandler';
 import { logger } from '../utils/logger';
-import { UserRole } from '@shared/types/feature';
-import { SessionUser, LoginRequest, RegisterRequest, AuthTokens } from '@shared/types/user';
+import { UserRole } from '@msmebazaar/types/feature';
+import { SessionUser, LoginRequest, RegisterRequest, AuthTokens } from '@msmebazaar/types/user';
 
 const prisma = new PrismaClient();
 

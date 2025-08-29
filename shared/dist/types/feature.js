@@ -32,7 +32,15 @@ var Feature;
     Feature["RECOMMENDATIONS"] = "RECOMMENDATIONS";
     Feature["MATCHMAKING"] = "MATCHMAKING";
     Feature["SEARCHMSME"] = "SEARCHMSME";
-})(Feature = exports.Feature || (exports.Feature = {}));
+    Feature["SEARCHMATCHMAKING"] = "SEARCHMATCHMAKING";
+    Feature["ADMIN_SERVICES"] = "ADMIN_SERVICES";
+    Feature["SUPER_ADMIN_SERVICES"] = "SUPER_ADMIN_SERVICES";
+    Feature["AGENT_SERVICES"] = "AGENT_SERVICES";
+    Feature["INVESTOR_SERVICES"] = "INVESTOR_SERVICES";
+    Feature["LOAN_SERVICES"] = "LOAN_SERVICES";
+    Feature["BUYER_SERVICES"] = "BUYER_SERVICES";
+    Feature["SELLER_SERVICES"] = "SELLER_SERVICES";
+})(Feature || (exports.Feature = Feature = {}));
 var UserRole;
 (function (UserRole) {
     UserRole["ADMIN"] = "admin";
@@ -43,11 +51,11 @@ var UserRole;
     UserRole["AGENT"] = "agent";
     UserRole["INVESTOR"] = "investor";
     UserRole["DEVELOPER"] = "developer";
-})(UserRole = exports.UserRole || (exports.UserRole = {}));
+})(UserRole || (exports.UserRole = UserRole = {}));
 var AccessLevel;
 (function (AccessLevel) {
     AccessLevel["READ"] = "READ";
     AccessLevel["WRITE"] = "WRITE";
     AccessLevel["ADMIN"] = "ADMIN";
-})(AccessLevel = exports.AccessLevel || (exports.AccessLevel = {}));
+})(AccessLevel || (exports.AccessLevel = AccessLevel = {}));
 //# sourceMappingURL=feature.js.map

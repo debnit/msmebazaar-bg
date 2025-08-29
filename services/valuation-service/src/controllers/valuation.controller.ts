@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ValuationService } from '../services/valuation.service';
-import { getSessionUser } from '@shared/auth';
+import { getSessionUser } from '@msmebazaar/shared/auth';
 
 export const getValuation = async (req: Request, res: Response, next: NextFunction) => {
   try {

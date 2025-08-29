@@ -1,6 +1,6 @@
 import { PaymentService } from '../services/payment.service';
-import { SessionUser } from '@shared/types/user';
-import { UserRole } from '@shared/types/feature';
+import { SessionUser } from '@msmebazaar/types/user';
+import { UserRole } from '@msmebazaar/types/feature';
 import { PaymentStatus, Currency } from '@prisma/client';
 
 // Mock Prisma client

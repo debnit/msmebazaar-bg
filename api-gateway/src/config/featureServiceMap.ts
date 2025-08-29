@@ -1,5 +1,5 @@
   // api-gateway/src/config/featureServiceMap.ts
-  import { Feature } from "@shared/config/featureFlagTypes";
+  import { Feature } from "@msmebazaar/types/feature";
 
   export const featureServiceMap: Record<string, Feature> = {
     /* -------- Authentication (no feature gating, public) -------- */

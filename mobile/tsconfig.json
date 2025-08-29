@@ -1,32 +1,37 @@
 {
+  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
-    "lib": [
-      "es2020",
-      "dom"
-    ],
-    "allowJs": true,
-    "jsx": "react-jsx",
-    "strict": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
     "moduleResolution": "node",
-    "esModuleInterop": true,
+    "allowJs": true,
+    "jsx": "react-native",
     "skipLibCheck": true,
-    "resolveJsonModule": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": [
-        "shared/*"
-      ],
-      "@mobile/*": [
-        "mobile/src/*"
-      ]
+      "@/*": ["./src/*"],
+      "@msmebazaar/shared": ["../shared"],
+      "@msmebazaar/shared/*": ["../shared/*"],
+      "@msmebazaar/types": ["../shared/types"],
+      "@msmebazaar/types/*": ["../shared/types/*"]
     }
   },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "App.tsx"
+  ],
   "exclude": [
     "node_modules",
-    "dist"
-  ],
-  "extends": "expo/tsconfig.base"
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }

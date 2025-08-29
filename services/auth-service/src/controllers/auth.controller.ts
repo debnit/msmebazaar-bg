@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AuthService } from '../services/auth.service';
 import { AppError } from '../middlewares/errorHandler';
 import { logger } from '../utils/logger';
-import { LoginRequest, RegisterRequest } from '@shared/types/user';
+import { LoginRequest, RegisterRequest } from '@msmebazaar/types/user';
 
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {

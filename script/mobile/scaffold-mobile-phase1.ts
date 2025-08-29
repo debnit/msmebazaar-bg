@@ -244,7 +244,7 @@ export default function AuthNavigator() {
   "src/navigation/RoleBasedNavigator.tsx": `import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "@mobile/store/authStore";
-import { UserRole } from "@shared/types/feature";
+import { UserRole } from "@msmebazaar/types/feature";
 import BuyerDashboardScreen from "@mobile/screens/Roles/Buyer/Free/BuyerFreeScreen";
 import SellerDashboardScreen from "@mobile/screens/Roles/Seller/Free/SellerFreeScreen";
 import AgentDashboardScreen from "@mobile/screens/Roles/Agent/Free/AgentFreeScreen";
@@ -285,7 +285,7 @@ export default function RoleBasedNavigator() {
 
   "src/store/authStore.ts": `import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SessionUser } from "@shared/types/user";
+import { SessionUser } from "@msmebazaar/types/user";
 import { apiClient } from "@mobile/api/apiClient";
 
 interface AuthState {
@@ -1047,7 +1047,7 @@ export class PaymentService {
   "src/modules/Shared/RoleGuard.tsx": `import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useAuth } from "@mobile/store/authStore";
-import { UserRole } from "@shared/types/feature";
+import { UserRole } from "@msmebazaar/types/feature";
 import { COLORS, TYPOGRAPHY } from "@mobile/utils/constants";
 
 interface RoleGuardProps {

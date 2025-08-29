@@ -1,89 +1,86 @@
 {
-  "ADVANCED_ANALYTICS": {
-    "label": "Advanced Analytics",
-    "description": "Detailed business insights & performance metrics.",
+  "USER_MANAGEMENT": {
     "enabled": true,
-    "proOnly": true,
-    "rolesEnabled": ["admin", "seller"],
-    "accessLevel": "READ",
-    "rolloutPercentage": 100
+    "label": "User Management",
+    "services": ["auth-service", "user-profile-service"],
+    "description": "User registration, login, and profile management"
   },
-"AI_BUSINESS_VALUATION": {
-    "label": "AI Business Valuation",
-    "description": "Machine learning model estimating business valuation.",
+  "PAYMENT_PROCESSING": {
     "enabled": true,
-    "proOnly": true,
-    "rolesEnabled": ["msmeOwner", "investor"],
-    "accessLevel": "WRITE",
-    "rolloutPercentage": 100
+    "label": "Payment Processing",
+    "services": ["payment-service"],
+    "description": "Payment processing and transactions"
+  },
+  "LOAN_MANAGEMENT": {
+    "enabled": true,
+    "label": "Loan Management",
+    "services": ["loan-service"],
+    "description": "Loan applications and management"
+  },
+  "BUSINESS_LISTINGS": {
+    "enabled": true,
+    "label": "Business Listings",
+    "services": ["msme-listing-service", "msme-service"],
+    "description": "Business listings and MSME management"
+  },
+  "BUYER_SERVICES": {
+    "enabled": true,
+    "label": "Buyer Services",
+    "services": ["buyer-service"],
+    "description": "Buyer platform services"
+  },
+  "SELLER_SERVICES": {
+    "enabled": true,
+    "label": "Seller Services",
+    "services": ["sellerservice"],
+    "description": "Seller platform services"
+  },
+  "ADMIN_SERVICES": {
+    "enabled": true,
+    "label": "Admin Services",
+    "services": ["admin-service"],
+    "description": "Administrative functions"
+  },
+  "SUPER_ADMIN_SERVICES": {
+    "enabled": true,
+    "label": "Super Admin Services",
+    "services": ["superadmin-service"],
+    "description": "Super administrative functions"
+  },
+  "AGENT_SERVICES": {
+    "enabled": true,
+    "label": "Agent Services",
+    "services": ["agent-service"],
+    "description": "Agent platform services"
+  },
+  "INVESTOR_SERVICES": {
+    "enabled": true,
+    "label": "Investor Services", 
+    "services": ["investor-service"],
+    "description": "Investor platform services"
+  },
+  "LOAN_SERVICES": {
+    "enabled": true,
+    "label": "Loan Services",
+    "services": ["loan-service"],
+    "description": "Loan services"
+  },
+  "NOTIFICATIONS": {
+    "enabled": true,
+    "label": "Notifications",
+    "services": ["notification-service"],
+    "description": "Notification system"
   },
   "RECOMMENDATIONS": {
-    "label": "Personalized Recommendations",
-    "description": "ML-based content and product recommendations.",
     "enabled": true,
-    "rolesEnabled": ["buyer", "seller"],
-    "accessLevel": "READ",
-    "rolloutPercentage": 80
+    "label": "Recommendations",
+    "services": ["recommendation-service"],
+    "description": "Business recommendations"
   },
   "MATCHMAKING": {
-    "label": "Smart Matchmaking",
-    "description": "AI-powered matchmaking between buyers and sellers.",
     "enabled": true,
-    "rolesEnabled": ["buyer", "seller"],
-    "accessLevel": "READ",
-    "rolloutPercentage": 100
-  },
-  "LOAN_CTA": {
-    "label": "Loan CTA",
-    "description": "Quick access to loan offers based on eligibility.",
-    "enabled": true,
-    "rolesEnabled": ["msmeOwner"],
-    "accessLevel": "READ",
-    "rolloutPercentage": 100
-  },
-"CUSTOM_REPORTS": {
-    "label": "Custom Reports",
-    "description": "Create and schedule tailor‑made business reports.",
-    "enabled": true,
-    "proOnly": true,
-    "rolesEnabled": ["admin"],
-    "accessLevel": "WRITE",
-    "rolloutPercentage": 50
-  },
-  "PRIORITY_SUPPORT": {
-    "label": "Priority Support",
-    "description": "Faster support SLA for premium members.",
-    "enabled": true,
-    "proOnly": true,
-    "rolesEnabled": ["buyer", "seller", "admin"],
-    "accessLevel": "READ",
-    "rolloutPercentage": 100
-  },
-  "BULK_OPERATIONS": {
-    "label": "Bulk Operations",
-    "description": "Modify products, orders, and records in bulk.",
-    "enabled": true,
-    "proOnly": true,
-    "rolesEnabled": ["seller"],
-    "accessLevel": "WRITE",
-    "rolloutPercentage": 30
-  },
-  "API_ACCESS": {
-    "label": "API Access",
-    "description": "Integrate MSMEBazaar with your systems via API.",
-    "enabled": true,
-    "proOnly": true,
-    "rolesEnabled": ["admin", "developer"],
-    "accessLevel": "READ",
-    "rolloutPercentage": 10
-  },
-  "PAYMENTS": {
-    "label": "Payments",
-    "description": "Enable payments API access via gateway",
-    "enabled": true,
-    "proOnly": false,
-    "rolesEnabled": ["buyer", "seller", "msmeOwner", "investor", "agent"],
-    "accessLevel": "READ",
-    "rolloutPercentage": 100
+    "label": "Matchmaking",
+    "services": ["matchmaking-service", "search-matchmaking-service"],
+    "description": "Business matchmaking services"
   }
 }

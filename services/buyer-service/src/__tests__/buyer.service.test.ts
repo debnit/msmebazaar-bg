@@ -1,6 +1,6 @@
 import { BuyerService } from '../services/buyer.service';
-import { SessionUser } from '@shared/types/user';
-import { UserRole } from '@shared/types/feature';
+import { SessionUser } from '@msmebazaar/types/user';
+import { UserRole } from '@msmebazaar/types/feature';
 
 // Mock Prisma client
 jest.mock('@prisma/client', () => ({

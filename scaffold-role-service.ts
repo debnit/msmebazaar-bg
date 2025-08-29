@@ -51,7 +51,7 @@ const roleServiceFiles: Record<string, string> = {
 
   // ===== FEATURE GATING SYSTEM =====
   
-  "src/services/FeatureGating/FeatureGatingService.ts": `import { UserRole } from "@shared/types/feature";
+  "src/services/FeatureGating/FeatureGatingService.ts": `import { UserRole } from "@msmebazaar/types/feature";
 
 export interface FeatureLimit {
   daily?: number;

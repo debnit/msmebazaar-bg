@@ -7,9 +7,9 @@ import { requireFeature } from "../middlewares/requireFeature";
 import { createServiceProxy } from "../services/proxyFactory";
 import { servicesConfig } from "../config/services";
 import { featureServiceMap } from "../config/featureServiceMap";
-import { Feature } from "@shared/config/featureFlagTypes";
+import { Feature } from "@msmebazaar/types/feature";
 
-const router = Router();
+const router: Router = Router();
 
 const createFeatureGate = (serviceName: string) => {
   return (req: Request, res: Response, next: NextFunction) => {

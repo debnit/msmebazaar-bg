@@ -1,10 +1,10 @@
 // services/payment-service/src/services/payment.service.ts
 
 import { Currency, Payment, PaymentStatus, Prisma } from "@prisma/client";
-import { SessionUser } from '@shared/types/user';
-import { FeatureGatingService } from '@shared/services/featureGating.service';
-import { Feature } from '@shared/types/feature';
-import { UserRole } from '@shared/types/feature';
+import { SessionUser } from '@msmebazaar/types/user';
+import { FeatureGatingService } from '@msmebazaar/shared/services/featureGating.service';
+import { Feature } from '@msmebazaar/types/feature';
+import { UserRole } from '@msmebazaar/types/feature';
 import { logger } from "../utils/logger";
 import { publishEvents } from "../kafka/producer";
 import prisma from "../db/prismaClient";

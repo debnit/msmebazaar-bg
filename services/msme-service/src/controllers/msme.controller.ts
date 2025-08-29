@@ -1,6 +1,6 @@
 import * as service from "../services/msme.service";
 import type { Request, Response } from "express";
-import { getSessionUser } from "@shared/auth";
+import { getSessionUser } from "@msmebazaar/shared/auth";
 
 // Helper: ensure requester is authenticated
 function requireUser(req: Request) {

@@ -363,7 +363,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Card } from "@mobile/components/ui/Card";
 import { Button } from "@mobile/components/ui/Button";
 import { RoleGuard } from "@mobile/modules/Shared/RoleGuard";
-import { UserRole } from "@shared/types/feature";
+import { UserRole } from "@msmebazaar/types/feature";
 import { COLORS, SPACING, TYPOGRAPHY } from "@mobile/utils/constants";
 
 export default function SellerProScreen({ navigation }) {
@@ -531,7 +531,7 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card } from "@mobile/components/ui/Card";
 import { RoleGuard } from "@mobile/modules/Shared/RoleGuard";
-import { UserRole } from "@shared/types/feature";
+import { UserRole } from "@msmebazaar/types/feature";
 import { COLORS, SPACING, TYPOGRAPHY } from "@mobile/utils/constants";
 
 export default function AgentProScreen({ navigation }) {

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { uploadKyc } from "../controllers/kyc.controller";
-import { jwtMw } from "@shared/auth";
+import { jwtMw } from "@msmebazaar/shared/auth";
 
 const upload = multer({ storage: multer.memoryStorage() });
 const router = Router();

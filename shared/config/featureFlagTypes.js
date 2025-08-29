@@ -35,6 +35,16 @@ var Feature;
     Feature["MARKET_LINKAGE"] = "MARKET_LINKAGE";
     Feature["SELLER"] = "SELLER";
     Feature["MSME"] = "MSME";
+    // New features for refactored services
+    Feature["BUYER_SERVICES"] = "BUYER_SERVICES";
+    Feature["SELLER_SERVICES"] = "SELLER_SERVICES";
+    Feature["ADMIN_SERVICES"] = "ADMIN_SERVICES";
+    Feature["SUPER_ADMIN_SERVICES"] = "SUPER_ADMIN_SERVICES";
+    Feature["INVESTOR_SERVICES"] = "INVESTOR_SERVICES";
+    Feature["AGENT_SERVICES"] = "AGENT_SERVICES";
+    Feature["LOAN_SERVICES"] = "LOAN_SERVICES";
+    Feature["PAYMENT_SERVICES"] = "PAYMENT_SERVICES";
+    Feature["AUTH_SERVICES"] = "AUTH_SERVICES";
 })(Feature || (exports.Feature = Feature = {}));
 var UserRole;
 (function (UserRole) {

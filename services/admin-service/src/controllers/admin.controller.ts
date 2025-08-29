@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AdminService } from '../services/admin.service';
-import { getSessionUser } from '@shared/auth';
+import { getSessionUser } from '@msmebazaar/shared/auth';
 import { logger } from '../utils/logger';
 
 export const getUserManagement = async (req: Request, res: Response, next: NextFunction) => {

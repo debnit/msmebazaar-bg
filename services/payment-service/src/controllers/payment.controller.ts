@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { PaymentService } from '../services/payment.service';
-import { getSessionUser } from '@shared/auth';
+import { getSessionUser } from '@msmebazaar/shared/auth';
 import { PaymentStatus } from '@prisma/client';
 import { logger } from '../utils/logger';
 

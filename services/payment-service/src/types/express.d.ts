@@ -1,4 +1,4 @@
-import { SessionUser } from "@shared/types/user";
+import { SessionUser } from "@msmebazaar/types/user";
 
 declare global {
   namespace Express {

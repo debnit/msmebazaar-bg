@@ -1,9 +1,9 @@
 // src/middlewares/requireFeature.ts
 
 import { Request, Response, NextFunction } from "express";
-import { Feature } from "../../../shared/config/featureFlagTypes";
+import { Feature } from "@msmebazaar/types/feature";
 import { canUserAccessFeature } from "../utils/featureAccess";
-import { SessionUser } from "@shared/types/user";
+import { SessionUser } from "@msmebazaar/types/user";
 
 /**
  * Middleware factory to enforce access to a specific feature.
