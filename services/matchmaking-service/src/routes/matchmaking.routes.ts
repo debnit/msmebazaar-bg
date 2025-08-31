@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireProUser } from "../../../shared/middleware/auth";
+import { requireAuth, requireProUser } from "@shared/middleware/auth";
 import { createMatchController, getMatchesController } from "../controllers/matchmaking.controller";
 
 const router = Router();

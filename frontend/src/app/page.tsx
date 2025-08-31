@@ -643,13 +643,13 @@ export default function MSMEBazaarLanding() {
                   <Mail className="h-4 w-4" />
                   support@msmebazaar.in
                 </Link>
-                <Link href="tel:+919999999999" className="flex items-center gap-2 text-gray-600 hover:text-blue-600">
+                <Link href="tel:+8260895728" className="flex items-center gap-2 text-gray-600 hover:text-blue-600">
                   <Phone className="h-4 w-4" />
-                  +91 99999 99999
+                  +91 8260895728
                 </Link>
                 <Link href="#" className="flex items-center gap-2 text-gray-600 hover:text-blue-600">
                   <MapPin className="h-4 w-4" />
-                  Mumbai, India
+                  Bengaluru, India
                 </Link>
                 <Button
                   variant="outline"
@@ -690,7 +690,7 @@ export default function MSMEBazaarLanding() {
           className="rounded-full bg-green-500 hover:bg-green-600 shadow-lg h-14 w-14 p-0 animate-bounce"
           onClick={() => {
             const message = encodeURIComponent("Hi, I need help on MSMEBazaar.");
-            const whatsappUrl = `https://wa.me/919999999999?text=${message}`;
+            const whatsappUrl = `https://wa.me/918260895728?text=${message}`;
             window.open(whatsappUrl, "_blank");
           }}
           title="Chat with us on WhatsApp"

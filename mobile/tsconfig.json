@@ -1,37 +1,31 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "lib": ["ES2022"],
-    "moduleResolution": "node",
-    "allowJs": true,
-    "jsx": "react-native",
-    "skipLibCheck": true,
     "strict": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@msmebazaar/shared": ["../shared"],
-      "@msmebazaar/shared/*": ["../shared/*"],
-      "@msmebazaar/types": ["../shared/types"],
-      "@msmebazaar/types/*": ["../shared/types/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@msmebazaar/shared": [
+        "../shared"
+      ],
+      "@msmebazaar/shared/*": [
+        "../shared/*"
+      ],
+      "@msmebazaar/types": [
+        "../shared/types"
+      ],
+      "@msmebazaar/types/*": [
+        "../shared/types/*"
+      ]
     }
   },
   "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "App.tsx"
+    "**/*.ts",
+    "**/*.tsx"
   ],
   "exclude": [
-    "node_modules",
-    "**/*.test.ts",
-    "**/*.spec.ts"
+    "node_modules"
   ]
 }

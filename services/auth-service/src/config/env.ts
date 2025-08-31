@@ -1,5 +1,10 @@
 // services/auth-service/src/config/env.ts
+
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { cleanEnv, str, port, num } from 'envalid';
+
 
 export const Config = cleanEnv(process.env, {
   NODE_ENV: str({ 
@@ -18,5 +23,6 @@ export const Config = cleanEnv(process.env, {
   DATABASE_URL: str({ desc: "postgresql://postgres:postgres@localhost:5432/msmebazaar"}),
   REDIS_URL: str({ desc: "redis://localhost:6379"}),
   BCRYPT_ROUNDS: num({ default: 12 }),
-  CORS_ORIGIN: str({ default: "http://localhost:2000" })
+  CORS_ORIGIN: str({ default: "http://localhost:3000" })
 });
+

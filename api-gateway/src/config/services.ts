@@ -17,7 +17,6 @@ export const servicesConfig: Record<string, ServiceConfig> = {
   compliance: { url: process.env["COMPLIANCE_SERVICE_URL"] || "http://localhost:8010", requiresAuth: true },
   eaasservice: { url: process.env["EAAS_SERVICE_URL"] || "http://localhost:8011", requiresAuth: true },
   gamificationservice: { url: process.env["GAMIFICATION_SERVICE_URL"] || "http://localhost:8012", requiresAuth: true },
-  loanservice: { url: process.env["LOAN_SERVICE_URL"] || "http://localhost:8013", requiresAuth: true },
   mlmonitoringservice: { url: process.env["ML_MONITORING_SERVICE_URL"] || "http://localhost:8014", requiresAuth: true },
   msmelistingservice: { url: process.env["MSME_LISTING_SERVICE_URL"] || "http://localhost:8015", requiresAuth: true },
   nbfcservice: { url: process.env["NBFC_SERVICE_URL"] || "http://localhost:8016", requiresAuth: true },

@@ -39,6 +39,7 @@ export interface RegisterRequest {
   email: string;
   password: string;
   name: string;
+  phone?: string;
 }
 
 export interface AuthenticatedRequest extends Express.Request {

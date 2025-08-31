@@ -1,6 +1,7 @@
 // services/auth-service/src/middlewares/errorHandler.ts
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
+import { getClientIP } from './ipExtractor';
 
 export class AppError extends Error {
   public statusCode: number;
@@ -32,13 +33,17 @@ export const errorHandler = (
     message = err.message;
   }
 
+  // Get client IP using the new extraction method
+  const clientIP = getClientIP(req);
+
   logger.error('Error occurred:', {
     error: err.message,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
     url: req.url,
     method: req.method,
-    ip: req.ip,
-    userAgent: req.get('User-Agent')
+    ip: clientIP,
+    userAgent: req.get('User-Agent'),
+    requestId: req.id
   });
 
   res.status(statusCode).json({
@@ -49,6 +54,15 @@ export const errorHandler = (
 };
 
 export const notFoundHandler = (req: Request, res: Response) => {
+  const clientIP = getClientIP(req);
+  
+  logger.warn('Route not found:', {
+    url: req.url,
+    method: req.method,
+    ip: clientIP,
+    userAgent: req.get('User-Agent')
+  });
+
   res.status(404).json({
     success: false,
     error: 'Route not found'

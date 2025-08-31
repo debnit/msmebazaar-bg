@@ -46,20 +46,32 @@ export class ApiError extends Error {
 class ApiClient {
   private config: Required<ApiClientConfig>;
   private authToken: string | null = null;
+  private refreshToken: string | null = null;
+  private isRefreshing = false;
+  private refreshPromise: Promise<string | null> | null = null;
+
   constructor(config: ApiClientConfig = {}) {
     this.config = {
       baseURL: config.baseURL || process.env["NEXT_PUBLIC_API_URL"] || "http://localhost:7000",
       timeout: config.timeout || 30000,
       retries: config.retries || 3,
-      retryDelay: config.retryDelay || 1000,
-      defaultHeaders: { "Content-Type": "application/json", Accept: "application/json", ...config.defaultHeaders },
+      retryDelay: config.retryDelay || 10000,
+      defaultHeaders: { 
+        "Content-Type": "application/json", 
+        Accept: "application/json", 
+        ...config.defaultHeaders 
+      },
       onUnauthorized: config.onUnauthorized || (() => {}),
       onError: config.onError || (() => {}),
     };
+    
+    // Initialize tokens from localStorage
     if (typeof window !== "undefined") {
       this.authToken = localStorage.getItem("auth_token");
+      this.refreshToken = localStorage.getItem("refresh_token");
     }
   }
+
   public setAuthToken(token: string | null) {
     this.authToken = token;
     if (typeof window !== "undefined") {
@@ -67,61 +79,196 @@ class ApiClient {
       else localStorage.removeItem("auth_token");
     }
   }
+
+  public setRefreshToken(token: string | null) {
+    this.refreshToken = token;
+    if (typeof window !== "undefined") {
+      if (token) localStorage.setItem("refresh_token", token);
+      else localStorage.removeItem("refresh_token");
+    }
+  }
+
+  public setTokens(accessToken: string | null, refreshToken: string | null) {
+    this.setAuthToken(accessToken);
+    this.setRefreshToken(refreshToken);
+  }
+
   public getAuthToken() { return this.authToken; }
+  public getRefreshToken() { return this.refreshToken; }
+
+  public clearTokens() {
+    this.setAuthToken(null);
+    this.setRefreshToken(null);
+  }
+
+  private async refreshAuthToken(): Promise<string | null> {
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    if (!this.refreshToken) {
+      return null;
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = this.performTokenRefresh();
+
+    try {
+      const newToken = await this.refreshPromise;
+      return newToken;
+    } finally {
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+    }
+  }
+
+  private async performTokenRefresh(): Promise<string | null> {
+    try {
+      const response = await fetch(`${this.config.baseURL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken: this.refreshToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.accessToken) {
+          this.setTokens(data.data.accessToken, data.data.refreshToken || this.refreshToken);
+          return data.data.accessToken;
+        }
+      }
+      
+      // If refresh failed, clear tokens
+      this.clearTokens();
+      return null;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      this.clearTokens();
+      return null;
+    }
+  }
+
   private getHeaders(custom?: Record<string, string>) {
     const headers = { ...this.config.defaultHeaders, ...custom };
-    if (this.authToken) headers["Authorization"] = `Bearer ${this.authToken}`;
+    
+    // Only add Authorization header if we have a valid token
+    if (this.authToken && this.authToken.trim() !== '') {
+      headers["Authorization"] = `Bearer ${this.authToken}`;
+    }
+    
     return headers;
   }
+
   private async makeRequest<T>(url: string, options: RequestInit = {}, attempt = 1): Promise<ApiResponse<T>> {
     const fullUrl = url.startsWith("http") ? url : `${this.config.baseURL}${url}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+    
     try {
-      const response = await fetch(fullUrl, { ...options, headers: this.getHeaders(options.headers as any), signal: controller.signal });
+      const response = await fetch(fullUrl, { 
+        ...options, 
+        headers: this.getHeaders(options.headers as any), 
+        signal: controller.signal 
+      });
+      
       clearTimeout(timeoutId);
+      
       let data: any = {};
       const contentType = response.headers.get("content-type");
       data = contentType?.includes("application/json") ? await response.json() : await response.text();
-      if (response.ok) return { success: true, data: data.data || data, message: data.message, meta: data.meta };
-      const err = new ApiError(data?.message || data?.error || `HTTP ${response.status}`, response.status, data?.code, data?.errors);
-      if (response.status === 401) { this.setAuthToken(null); this.config.onUnauthorized(); }
+      
+      if (response.ok) {
+        return { 
+          success: true, 
+          data: data.data || data, 
+          message: data.message, 
+          meta: data.meta 
+        };
+      }
+
+      // Handle 401 Unauthorized - try to refresh token
+      if (response.status === 401 && attempt === 1 && this.refreshToken) {
+        const newToken = await this.refreshAuthToken();
+        if (newToken) {
+          // Retry the request with the new token
+          return this.makeRequest<T>(url, options, attempt + 1);
+        } else {
+          // Refresh failed, redirect to login
+          this.config.onUnauthorized();
+        }
+      }
+
+      const err = new ApiError(
+        data?.message || data?.error || `HTTP ${response.status}`, 
+        response.status, 
+        data?.code, 
+        data?.errors
+      );
+      
+      if (response.status === 401) { 
+        this.clearTokens(); 
+        this.config.onUnauthorized(); 
+      }
+      
       if (([408, 429].includes(response.status) || response.status >= 500) && attempt <= this.config.retries) {
         await this.delay(this.config.retryDelay * Math.pow(2, attempt - 1));
         return this.makeRequest<T>(url, options, attempt + 1);
       }
+      
       throw err;
     } catch (error) {
       clearTimeout(timeoutId);
-      const err = error instanceof ApiError ? error : new ApiError(error instanceof Error ? error.message : "Unknown error", 0);
+      
+      const err = error instanceof ApiError ? error : new ApiError(
+        error instanceof Error ? error.message : "Unknown error", 
+        0
+      );
+      
       if (attempt <= this.config.retries) {
         await this.delay(this.config.retryDelay * Math.pow(2, attempt - 1));
         return this.makeRequest<T>(url, options, attempt + 1);
       }
+      
       this.config.onError(err);
       throw err;
     }
   }
+
   private delay(ms: number) { return new Promise(res => setTimeout(res, ms)); }
+
   public get<T>(url: string, params?: Record<string, any>) {
     let fullUrl = url;
     if (params) {
       const qs = new URLSearchParams();
-      Object.entries(params).forEach(([k,v]) => { if (v != null) qs.append(k, String(v)); });
+      Object.entries(params).forEach(([k,v]) => { 
+        if (v != null) qs.append(k, String(v)); 
+      });
       fullUrl += `?${qs.toString()}`;
     }
     return this.makeRequest<T>(fullUrl, { method: "GET" });
   }
+
   public post<T>(url: string, data?: any) {
-    return this.makeRequest<T>(url, { method: "POST", body: data instanceof FormData ? data : data ? JSON.stringify(data) : null });
+    return this.makeRequest<T>(url, { 
+      method: "POST", 
+      body: data instanceof FormData ? data : data ? JSON.stringify(data) : null 
+    });
   }
+
   public put<T>(url: string, data?: any) {
     return this.makeRequest<T>(url, { method: "PUT", body: JSON.stringify(data) });
   }
+
   public patch<T>(url: string, data?: any) {
     return this.makeRequest<T>(url, { method: "PATCH", body: JSON.stringify(data) });
   }
-  public delete<T>(url: string) { return this.makeRequest<T>(url, { method: "DELETE" }); }
+
+  public delete<T>(url: string) { 
+    return this.makeRequest<T>(url, { method: "DELETE" }); 
+  }
+
   public upload<T>(url: string, file: File, additional?: Record<string, any>) {
     const formData = new FormData();
     formData.append("file", file);
@@ -131,8 +278,23 @@ class ApiClient {
 }
 
 const apiClient = new ApiClient({
-  onUnauthorized: () => { if (typeof window !== "undefined") window.location.href = "/login"; },
-  onError: (err) => { if (err.status !== 422) toast({ title: "Error", description: err.message, variant: "destructive" }); },
+  onUnauthorized: () => { 
+    if (typeof window !== "undefined") {
+      // Clear any existing tokens
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("refresh_token");
+      window.location.href = "/login"; 
+    }
+  },
+  onError: (err) => { 
+    if (err.status !== 422) {
+      toast({ 
+        title: "Error", 
+        description: err.message, 
+        variant: "destructive" 
+      }); 
+    }
+  },
 });
 
 export default apiClient;
@@ -142,13 +304,13 @@ export const api = {
     login: (c: { email: string; password: string }) => apiClient.post("/auth/login", c),
     register: (d: any) => apiClient.post("/auth/register", d),
     logout: () => apiClient.post("/auth/logout"),
-    refreshToken: () => apiClient.post("/auth/refresh"),
+    refreshToken: (data: { refreshToken: string }) => apiClient.post("/auth/refresh", data),
     forgotPassword: (email: string) => apiClient.post("/auth/forgot-password", { email }),
     resetPassword: (token: string, password: string) => apiClient.post("/auth/reset-password", { token, password }),
     verifyEmail: (token: string) => apiClient.post("/auth/verify-email", { token }),
   },
   user: {
-    getProfile: () => apiClient.get("/user/profile"),
+    getProfile: () => apiClient.get("/auth/profile"),
     updateProfile: (d: any) => apiClient.put("/user/profile", d),
     changePassword: (d: { currentPassword: string; newPassword: string }) => apiClient.put("/user/change-password", d),
     uploadAvatar: (f: File) => apiClient.upload("/user/avatar", f),
@@ -245,10 +407,6 @@ export const api = {
   crm: {
     getPipeline: () => apiClient.get("/crm/pipeline"),
   },
-  superadmin: {
-    getSystemHealth: () => apiClient.get("/superadmin/system-health"),
-    databaseOps: (action: string) => apiClient.post("/superadmin/database", { action }),
-  },
   recommendation: {
     getListings: (params: { role: string; userId: string; k?: number }) =>
       apiClient.get<{ items: Recommendation[] }>("/recommendations/listings", params),
@@ -315,6 +473,7 @@ export const api = {
     getSystemHealth: () => apiClient.get("/superadmin/health"),
     getAuditLogs: (p?: any) => apiClient.get("/superadmin/audit-logs", p),
     createSuperAdmin: (data: any) => apiClient.post("/superadmin/admins", data),
+    databaseOps: (action: string) => apiClient.post("/superadmin/database", { action }),
   },
 
   agent: {

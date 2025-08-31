@@ -29,7 +29,7 @@ function getTokenFromRequest(req, opts = {}) {
             .split(";")
             .find((c) => c.trim().startsWith(`${cookieName}=`));
         if (match)
-            return match.trim().split("=")[1];
+            match.trim().split("=")[1];
     }
     return null;
 }

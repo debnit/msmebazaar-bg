@@ -8,7 +8,7 @@ export const Config : { [key: string]: any } = {
   frontendUrl: env.FRONTEND_URL ||3000,
   nodeEnv: env.NODE_ENV,
   logLevel: env.LOG_LEVEL,
-  services: servicesConfig
+  services: servicesConfig,
 } as const;
 
 

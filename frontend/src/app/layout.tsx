@@ -16,7 +16,6 @@ export const metadata: Metadata = {
     "Complete business ecosystem for MSMEs including loans, valuation, exit strategies, market linkage, and networking opportunities.",
   keywords: "MSME, business loans, valuation, exit strategy, market linkage, networking",
   authors: [{ name: "MSMEBazaar Team" }],
-  viewport: "width=device-width, initial-scale=1",
   robots: "index, follow",
   openGraph: {
     title: "MSMEBazaar - Empowering MSMEs",
@@ -26,6 +25,7 @@ export const metadata: Metadata = {
   },
     generator: 'v0.dev'
 }
+export const viewport = "width=device-width, initial-scale=1";
 
 interface RootLayoutProps {
   children: React.ReactNode

@@ -1,6 +1,5 @@
-// PRODUCTION-GRADE SERVICE BOOTSTRAP
-import express from "express";
-import { createServer } from "http";
+import express, { Request, Response, NextFunction } from "express";
+import { createServer, Server } from "http";
 import paymentRoutes from "./routes/payment.routes";
 import { logger } from "./utils/logger";
 import { paymentEventProducer } from "./kafka/producer";
@@ -8,11 +7,11 @@ import { startConsumer, stopConsumer } from "./kafka/consumerRunner";
 import prisma from "./db/prismaClient";
 import helmet from "helmet";
 import compression from "compression";
-
+import { PaymentError } from "./utils/errors";
 
 class PaymentService {
   private app: express.Application;
-  private server: any;
+  private server?: Server;
 
   constructor() {
     this.app = express();
@@ -23,14 +22,13 @@ class PaymentService {
 
   private setupMiddleware(): void {
     this.app.use(helmet());
-    this.app.use(compression());
+    this.app.use(compression() as unknown as express.RequestHandler); // TS-safe
     this.app.use(express.json({ limit: '10mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-    // Request ID middleware
     this.app.use((req, res, next) => {
-      req.headers['x-request-id'] = req.headers['x-request-id'] || 
-        Math.random().toString(36).substring(7);
+      req.headers['x-request-id'] = req.headers['x-request-id'] ||
+        Math.random().toString(36).substring(2, 10);
       next();
     });
   }
@@ -41,7 +39,7 @@ class PaymentService {
     this.app.get("/ready", this.readinessCheck);
   }
 
-  private healthCheck = (req: express.Request, res: express.Response) => {
+  private healthCheck = (_req: Request, res: Response) => {
     res.status(200).json({
       status: "healthy",
       service: "payment-service",
@@ -50,11 +48,9 @@ class PaymentService {
     });
   };
 
-  private readinessCheck = async (req: express.Request, res: express.Response) => {
+  private readinessCheck = async (_req: Request, res: Response) => {
     try {
-      // Check database connection
       await prisma.$queryRaw`SELECT 1`;
-      
       res.status(200).json({
         status: "ready",
         checks: {
@@ -62,58 +58,58 @@ class PaymentService {
           kafka: "healthy",
         },
       });
-    } catch (error) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       res.status(503).json({
         status: "not ready",
-        error: error.message,
+        error: message,
       });
     }
   };
 
   private setupErrorHandling(): void {
-    this.app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-      logger.error('Unhandled application error', {
-        error: err.message,
-        stack: err.stack,
-        path: req.path,
-        method: req.method,
-      });
+    this.app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
 
-      res.status(500).json({
+      logger.error(
+        { error: errorMessage, stack: errorStack, path: req.path, method: req.method },
+        "Unhandled application error"
+      );
+
+      const statusCode = err instanceof PaymentError ? err.statusCode : 500;
+      const message = err instanceof PaymentError ? err.message : "Internal server error";
+
+      res.status(statusCode).json({
         success: false,
-        error: "Internal server error",
+        error: message,
         requestId: req.headers['x-request-id'],
       });
     });
   }
 
   async start(): Promise<void> {
-    const PORT = process.env.SERVICE_PORT || 4004;
-    
+    const PORT = Number(process.env.SERVICE_PORT) || 4004;
+
     try {
-      // Initialize database connection
       await prisma.$connect();
-      logger.info('Database connected successfully');
+      logger.info("Database connected successfully");
 
-      // Initialize Kafka producer
       await paymentEventProducer.connect();
-      logger.info('Kafka producer connected successfully');
+      logger.info("Kafka producer connected successfully");
 
-      // Start Kafka consumer
       await startConsumer();
-      logger.info('Kafka consumer started successfully');
+      logger.info("Kafka consumer started successfully");
 
-      // Start HTTP server
       this.server = createServer(this.app);
       this.server.listen(PORT, () => {
         logger.info(`Payment service running on port ${PORT}`);
       });
 
       this.setupGracefulShutdown();
-    } catch (error) {
-      logger.error('Failed to start payment service', {
-        error: error.message,
-      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.fatal({ error: message }, "Failed to start payment service");
       process.exit(1);
     }
   }
@@ -122,35 +118,34 @@ class PaymentService {
     const gracefulShutdown = async (signal: string) => {
       logger.info(`Received ${signal}, starting graceful shutdown`);
 
-      if (this.server) {
-        this.server.close(async () => {
-          logger.info('HTTP server closed');
-          
-          // Close database connection
-          await prisma.$disconnect();
+      try {
+        if (this.server) {
+          await new Promise<void>((resolve) => this.server!.close(() => resolve()));
+          logger.info("HTTP server closed");
+        }
 
-          // Close Kafka consumer
-          await stopConsumer();
+        await prisma.$disconnect();
+        await stopConsumer();
+        await paymentEventProducer.disconnect();
 
-          
-          // Close Kafka connections
-          await paymentEventProducer.disconnect();
-          
-          logger.info('Graceful shutdown completed');
-          process.exit(0);
-        });
+        logger.info("Graceful shutdown completed");
+        process.exit(0);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ error: message }, "Error during graceful shutdown");
+        process.exit(1);
       }
     };
 
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
   }
 }
 
-// Start the service
 const paymentService = new PaymentService();
-paymentService.start().catch((error) => {
-  logger.fatal('Failed to start payment service', { error: error.message });
+paymentService.start().catch((err: unknown) => {
+  const message = err instanceof Error ? err.message : String(err);
+  logger.fatal({ error: message }, "Failed to start payment service");
   process.exit(1);
 });
 

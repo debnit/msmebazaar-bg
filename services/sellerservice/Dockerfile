@@ -61,9 +61,9 @@ RUN if [ -d "/app/services/sellerservice/prisma" ]; then       cp -r /app/servic
 
 USER sellerservice
 
-EXPOSE 3010
+EXPOSE 8002
 
-ENV PORT 3010
+ENV PORT 8002
 ENV HOSTNAME "0.0.0.0"
 
 # Run database migrations and start the service

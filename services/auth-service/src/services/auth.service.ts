@@ -6,6 +6,8 @@ import { AppError } from '../middlewares/errorHandler';
 import { logger } from '../utils/logger';
 import { UserRole } from '@msmebazaar/types/feature';
 import { SessionUser, LoginRequest, RegisterRequest, AuthTokens } from '@msmebazaar/types/user';
+import { SessionService } from './session.service';
+import { getClientIP } from '../middlewares/ipExtractor';
 
 const prisma = new PrismaClient();
 
@@ -26,19 +28,21 @@ export interface UserWithRoles {
   updatedAt: string;
 }
 
+export interface LoginContext {
+  ipAddress?: string;
+  userAgent?: string;
+}
+
 export class AuthService {
   /**
-   * Register a new user with basic role assignment
+   * Register a new user with proper role assignment
    */
-  static async registerUser(data: RegisterRequest): Promise<AuthServiceResponse> {
+  static async registerUser(data: RegisterRequest, context?: LoginContext): Promise<AuthServiceResponse> {
     try {
       const { email, password, name } = data;
 
       // Check if user exists
-      const existingUser = await prisma.user.findUnique({
-        where: { email }
-      });
-
+      const existingUser = await prisma.user.findUnique({ where: { email } });
       if (existingUser) {
         throw new AppError('User with this email already exists', 409);
       }
@@ -46,25 +50,59 @@ export class AuthService {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, Config.BCRYPT_ROUNDS);
 
-      // Create user with default role (BUYER)
-      const user = await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          name,
-          isPro: false,
-          roles: {
-            create: {
-              name: UserRole.BUYER
-            }
-          }
+      // Get or create the default MSME_OWNER role
+      const defaultRole = await prisma.role.upsert({
+        where: { name: UserRole.MSME_OWNER },
+        update: {},
+        create: { 
+          name: UserRole.MSME_OWNER, 
+          description: 'Default MSME Owner Role', 
+          permissions: [] 
         },
-        include: {
-          roles: true
-        }
       });
 
-      logger.info('User registered successfully', { userId: user.id, email });
+      // Create user with transaction to ensure data consistency
+      const user = await prisma.$transaction(async (tx) => {
+        // Create the user
+        const newUser = await tx.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+            name,
+            isPro: false,
+          },
+        });
+
+        // Assign default role
+        await tx.userRole.create({
+          data: {
+            userId: newUser.id,
+            roleId: defaultRole.id,
+          },
+        });
+
+        // Return user with roles
+        return await tx.user.findUnique({
+          where: { id: newUser.id },
+          include: {
+            roles: {
+              include: {
+                role: true,
+              },
+            },
+          },
+        });
+      });
+
+      if (!user) {
+        throw new AppError('Failed to create user', 500);
+      }
+
+      logger.info('User registered successfully', {
+        userId: user.id,
+        email,
+        ipAddress: context?.ipAddress,
+      });
 
       return {
         success: true,
@@ -75,14 +113,18 @@ export class AuthService {
             email: user.email,
             name: user.name,
             isPro: user.isPro,
-            roles: user.roles.map(r => r.name as UserRole),
+            roles: user.roles.map(r => r.role.name as UserRole),
             createdAt: user.createdAt.toISOString(),
-            updatedAt: user.updatedAt.toISOString()
-          }
-        }
+            updatedAt: user.updatedAt.toISOString(),
+          },
+        },
       };
     } catch (error) {
-      logger.error('Registration failed', { error, email: data.email });
+      logger.error('Registration failed', {
+        error,
+        email: data.email,
+        ipAddress: context?.ipAddress,
+      });
       throw error;
     }
   }
@@ -90,7 +132,7 @@ export class AuthService {
   /**
    * Authenticate user and generate tokens
    */
-  static async loginUser(data: LoginRequest): Promise<AuthServiceResponse> {
+  static async loginUser(data: LoginRequest, context?: LoginContext): Promise<AuthServiceResponse> {
     try {
       const { email, password } = data;
 
@@ -98,13 +140,28 @@ export class AuthService {
       const user = await prisma.user.findUnique({
         where: { email },
         include: {
-          roles: true
-        }
+          roles: {
+            include: {
+              role: true,
+            },
+          },
+        },
       });
 
       if (!user || !await bcrypt.compare(password, user.password)) {
         throw new AppError('Invalid credentials', 401);
       }
+
+      // Check if user is active
+      if (!user.isActive) {
+        throw new AppError('Account is deactivated', 403);
+      }
+
+      // Update last login
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
 
       // Generate tokens
       const tokenPayload: SessionUser = {
@@ -113,9 +170,9 @@ export class AuthService {
         name: user.name,
         isPro: user.isPro,
         onboardedProAt: user.onboardedProAt?.toISOString(),
-        roles: user.roles.map(r => r.name as UserRole),
+        roles: user.roles.map(r => r.role.name as UserRole),
         createdAt: user.createdAt.toISOString(),
-        updatedAt: user.updatedAt.toISOString()
+        updatedAt: user.updatedAt.toISOString(),
       };
 
       const { accessToken, refreshToken } = TokenManager.generateTokens(tokenPayload);
@@ -125,11 +182,24 @@ export class AuthService {
         data: {
           token: refreshToken,
           userId: user.id,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-        }
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        },
       });
 
-      logger.info('User logged in successfully', { userId: user.id, email });
+      // Create session with IP tracking
+      await SessionService.createSession({
+        userId: user.id,
+        sessionToken: refreshToken,
+        ipAddress: context?.ipAddress,
+        userAgent: context?.userAgent,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      });
+
+      logger.info('User logged in successfully', { 
+        userId: user.id, 
+        email,
+        ipAddress: context?.ipAddress,
+      });
 
       return {
         success: true,
@@ -137,11 +207,15 @@ export class AuthService {
         data: {
           accessToken,
           refreshToken,
-          user: tokenPayload
-        }
+          user: tokenPayload,
+        },
       };
     } catch (error) {
-      logger.error('Login failed', { error, email: data.email });
+      logger.error('Login failed', { 
+        error, 
+        email: data.email,
+        ipAddress: context?.ipAddress,
+      });
       throw error;
     }
   }
@@ -155,11 +229,15 @@ export class AuthService {
         where: { id: userId },
         data: {
           isPro: true,
-          onboardedProAt: new Date()
+          onboardedProAt: new Date(),
         },
         include: {
-          roles: true
-        }
+          roles: {
+            include: {
+              role: true,
+            },
+          },
+        },
       });
 
       logger.info('User upgraded to Pro', { userId });
@@ -174,11 +252,11 @@ export class AuthService {
             name: user.name,
             isPro: user.isPro,
             onboardedProAt: user.onboardedProAt?.toISOString(),
-            roles: user.roles.map(r => r.name as UserRole),
+            roles: user.roles.map(r => r.role.name as UserRole),
             createdAt: user.createdAt.toISOString(),
-            updatedAt: user.updatedAt.toISOString()
-          }
-        }
+            updatedAt: user.updatedAt.toISOString(),
+          },
+        },
       };
     } catch (error) {
       logger.error('Pro upgrade failed', { error, userId });
@@ -189,34 +267,75 @@ export class AuthService {
   /**
    * Add role to user (admin function)
    */
-  static async addUserRole(userId: string, role: UserRole): Promise<AuthServiceResponse> {
+  static async addUserRole(userId: string, roleName: UserRole): Promise<AuthServiceResponse> {
     try {
-      const existingRole = await prisma.userRole.findFirst({
-        where: {
-          userId,
-          name: role
-        }
+      // Get or create the role
+      const role = await prisma.role.upsert({
+        where: { name: roleName },
+        update: {},
+        create: { 
+          name: roleName, 
+          description: `${roleName} Role`, 
+          permissions: [] 
+        },
       });
 
-      if (existingRole) {
+      // Check if user already has this role
+      const existingUserRole = await prisma.userRole.findFirst({
+        where: {
+          userId,
+          roleId: role.id,
+        },
+      });
+
+      if (existingUserRole) {
         throw new AppError('User already has this role', 409);
       }
 
+      // Add role to user
       await prisma.userRole.create({
         data: {
           userId,
-          name: role
-        }
+          roleId: role.id,
+        },
       });
 
-      logger.info('Role added to user', { userId, role });
+      // Get updated user with roles
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          roles: {
+            include: {
+              role: true,
+            },
+          },
+        },
+      });
+
+      if (!user) {
+        throw new AppError('User not found', 404);
+      }
+
+      logger.info('Role added to user', { userId, role: roleName });
 
       return {
         success: true,
-        message: `Role ${role} added successfully`
+        message: 'Role added successfully',
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            isPro: user.isPro,
+            onboardedProAt: user.onboardedProAt?.toISOString(),
+            roles: user.roles.map(r => r.role.name as UserRole),
+            createdAt: user.createdAt.toISOString(),
+            updatedAt: user.updatedAt.toISOString(),
+          },
+        },
       };
     } catch (error) {
-      logger.error('Add role failed', { error, userId, role });
+      logger.error('Add user role failed', { error, userId, role: roleName });
       throw error;
     }
   }
@@ -224,27 +343,50 @@ export class AuthService {
   /**
    * Remove role from user (admin function)
    */
-  static async removeUserRole(userId: string, role: UserRole): Promise<AuthServiceResponse> {
+  static async removeUserRole(userId: string, roleName: UserRole): Promise<AuthServiceResponse> {
     try {
-      const deletedRole = await prisma.userRole.deleteMany({
-        where: {
-          userId,
-          name: role
-        }
+      // Find the role
+      const role = await prisma.role.findUnique({
+        where: { name: roleName },
       });
 
-      if (deletedRole.count === 0) {
+      if (!role) {
+        throw new AppError('Role not found', 404);
+      }
+
+      // Find user role association
+      const userRole = await prisma.userRole.findFirst({
+        where: {
+          userId,
+          roleId: role.id,
+        },
+      });
+
+      if (!userRole) {
         throw new AppError('User does not have this role', 404);
       }
 
-      logger.info('Role removed from user', { userId, role });
+      // Prevent removing the last role (user must have at least one role)
+      const userRoleCount = await prisma.userRole.count({
+        where: { userId },
+      });
+
+      if (userRoleCount <= 1) {
+        throw new AppError('Cannot remove the last role from user', 400);
+      }
+
+      await prisma.userRole.delete({
+        where: { id: userRole.id },
+      });
+
+      logger.info('Role removed from user', { userId, role: roleName });
 
       return {
         success: true,
-        message: `Role ${role} removed successfully`
+        message: 'Role removed successfully',
       };
     } catch (error) {
-      logger.error('Remove role failed', { error, userId, role });
+      logger.error('Remove user role failed', { error, userId, role: roleName });
       throw error;
     }
   }
@@ -257,8 +399,13 @@ export class AuthService {
       const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
-          roles: true
-        }
+          roles: {
+            include: {
+              role: true,
+            },
+          },
+          profile: true,
+        },
       });
 
       if (!user) {
@@ -275,11 +422,21 @@ export class AuthService {
             name: user.name,
             isPro: user.isPro,
             onboardedProAt: user.onboardedProAt?.toISOString(),
-            roles: user.roles.map(r => r.name as UserRole),
+            roles: user.roles.map(r => r.role.name as UserRole),
             createdAt: user.createdAt.toISOString(),
-            updatedAt: user.updatedAt.toISOString()
-          }
-        }
+            updatedAt: user.updatedAt.toISOString(),
+          },
+          profile: user.profile ? {
+            id: user.profile.id,
+            phone: user.profile.phone,
+            avatarUrl: user.profile.avatarUrl,
+            bio: user.profile.bio,
+            address: user.profile.address,
+            socialLinks: user.profile.socialLinks,
+            createdAt: user.profile.createdAt.toISOString(),
+            updatedAt: user.profile.updatedAt.toISOString(),
+          } : null,
+        },
       };
     } catch (error) {
       logger.error('Get user profile failed', { error, userId });
@@ -290,7 +447,7 @@ export class AuthService {
   /**
    * Refresh access token
    */
-  static async refreshToken(refreshToken: string): Promise<AuthServiceResponse> {
+  static async refreshToken(refreshToken: string, context?: LoginContext): Promise<AuthServiceResponse> {
     try {
       // Verify refresh token exists and is valid
       const tokenRecord = await prisma.refreshToken.findUnique({
@@ -298,14 +455,23 @@ export class AuthService {
         include: {
           user: {
             include: {
-              roles: true
-            }
-          }
-        }
+              roles: {
+                include: {
+                  role: true,
+                },
+              },
+            },
+          },
+        },
       });
 
       if (!tokenRecord || tokenRecord.expiresAt < new Date()) {
         throw new AppError('Invalid or expired refresh token', 401);
+      }
+
+      // Check if user is still active
+      if (!tokenRecord.user.isActive) {
+        throw new AppError('User account is deactivated', 403);
       }
 
       // Generate new tokens
@@ -315,9 +481,9 @@ export class AuthService {
         name: tokenRecord.user.name,
         isPro: tokenRecord.user.isPro,
         onboardedProAt: tokenRecord.user.onboardedProAt?.toISOString(),
-        roles: tokenRecord.user.roles.map(r => r.name as UserRole),
+        roles: tokenRecord.user.roles.map(r => r.role.name as UserRole),
         createdAt: tokenRecord.user.createdAt.toISOString(),
-        updatedAt: tokenRecord.user.updatedAt.toISOString()
+        updatedAt: tokenRecord.user.updatedAt.toISOString(),
       };
 
       const { accessToken, refreshToken: newRefreshToken } = TokenManager.generateTokens(tokenPayload);
@@ -327,17 +493,27 @@ export class AuthService {
         where: { token: refreshToken },
         data: {
           token: newRefreshToken,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        }
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
       });
+
+      // Update session with new IP if provided
+      const session = await SessionService.getSessionByToken(refreshToken);
+      if (session && context?.ipAddress) {
+        await SessionService.updateSessionInfo(
+          session.id,
+          context.ipAddress,
+          context.userAgent,
+        );
+      }
 
       return {
         success: true,
         message: 'Token refreshed successfully',
         data: {
           accessToken,
-          refreshToken: newRefreshToken
-        }
+          refreshToken: newRefreshToken,
+        },
       };
     } catch (error) {
       logger.error('Token refresh failed', { error });
@@ -346,20 +522,136 @@ export class AuthService {
   }
 
   /**
-   * Logout user (invalidate refresh token)
+   * Logout user (invalidate refresh token and session)
    */
   static async logout(refreshToken: string): Promise<AuthServiceResponse> {
     try {
+      // Delete refresh token
       await prisma.refreshToken.delete({
-        where: { token: refreshToken }
+        where: { token: refreshToken },
+      });
+
+      // Delete session
+      await SessionService.deleteSessionByToken(refreshToken);
+
+      return {
+        success: true,
+        message: 'Logged out successfully',
+      };
+    } catch (error) {
+      logger.error('Logout failed', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Get user sessions
+   */
+  static async getUserSessions(userId: string): Promise<AuthServiceResponse> {
+    try {
+      const sessions = await SessionService.getUserSessions(userId);
+
+      return {
+        success: true,
+        message: 'User sessions retrieved successfully',
+        data: { sessions },
+      };
+    } catch (error) {
+      logger.error('Get user sessions failed', { error, userId });
+      throw error;
+    }
+  }
+
+  /**
+   * Revoke all user sessions
+   */
+  static async revokeAllSessions(userId: string): Promise<AuthServiceResponse> {
+    try {
+      await SessionService.deleteAllUserSessions(userId);
+      await prisma.refreshToken.deleteMany({
+        where: { userId },
       });
 
       return {
         success: true,
-        message: 'Logged out successfully'
+        message: 'All sessions revoked successfully',
       };
     } catch (error) {
-      logger.error('Logout failed', { error });
+      logger.error('Revoke all sessions failed', { error, userId });
+      throw error;
+    }
+  }
+
+  /**
+   * Change user password
+   */
+  static async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<AuthServiceResponse> {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new AppError('User not found', 404);
+      }
+
+      // Verify current password
+      if (!await bcrypt.compare(currentPassword, user.password)) {
+        throw new AppError('Current password is incorrect', 401);
+      }
+
+      // Hash new password
+      const hashedNewPassword = await bcrypt.hash(newPassword, Config.BCRYPT_ROUNDS);
+
+      // Update password
+      await prisma.user.update({
+        where: { id: userId },
+        data: { password: hashedNewPassword },
+      });
+
+      logger.info('Password changed successfully', { userId });
+
+      return {
+        success: true,
+        message: 'Password changed successfully',
+      };
+    } catch (error) {
+      logger.error('Change password failed', { error, userId });
+      throw error;
+    }
+  }
+
+  /**
+   * Verify user email
+   */
+  static async verifyEmail(token: string): Promise<AuthServiceResponse> {
+    try {
+      // This would typically involve a separate email verification token table
+      // For now, we'll implement a basic version
+      const user = await prisma.user.findFirst({
+        where: {
+          emailVerified: false,
+          // In a real implementation, you'd verify against a token table
+        },
+      });
+
+      if (!user) {
+        throw new AppError('Invalid verification token', 400);
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerified: true },
+      });
+
+      logger.info('Email verified successfully', { userId: user.id });
+
+      return {
+        success: true,
+        message: 'Email verified successfully',
+      };
+    } catch (error) {
+      logger.error('Email verification failed', { error });
       throw error;
     }
   }

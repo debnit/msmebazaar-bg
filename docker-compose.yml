@@ -67,9 +67,11 @@ services:
       context: ./services/auth-service
       dockerfile: Dockerfile
     container_name: msmebazaar-auth-service
+    ports:
+      - "8004:8004"
     environment:
       - NODE_ENV=production
-      - PORT=3002
+      - PORT=8004
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
@@ -86,9 +88,11 @@ services:
       context: ./services/loan-service
       dockerfile: Dockerfile
     container_name: msmebazaar-loan-service
+    ports:
+      - "8006:8006"
     environment:
       - NODE_ENV=production
-      - PORT=3003
+      - PORT=8006
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
@@ -105,9 +109,11 @@ services:
       context: ./services/buyer-service
       dockerfile: Dockerfile
     container_name: msmebazaar-buyer-service
+    ports:
+      - "8001:8001"
     environment:
       - NODE_ENV=production
-      - PORT=3004
+      - PORT=8001
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
@@ -124,9 +130,11 @@ services:
       context: ./services/sellerservice
       dockerfile: Dockerfile
     container_name: msmebazaar-seller-service
+    ports:
+      - "8002:8002"
     environment:
       - NODE_ENV=production
-      - PORT=3005
+      - PORT=8002
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
@@ -143,9 +151,11 @@ services:
       context: ./services/notification-service
       dockerfile: Dockerfile
     container_name: msmebazaar-notification-service
+    ports:
+      - "8008:8008"
     environment:
       - NODE_ENV=production
-      - PORT=3006
+      - PORT=8008
       - DATABASE_URL=${DATABASE_URL}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - REDIS_URL=redis://redis:6379

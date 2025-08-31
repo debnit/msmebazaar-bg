@@ -6,8 +6,8 @@ import type { User, UserRegistration } from "@/types/user"
 
 // 🔹 Token Manager to handle access/refresh tokens
 class TokenManager {
-  static setTokens(token: string, refreshToken: string) {
-    localStorage.setItem("auth_token", token)
+  static setTokens(accessToken: string, refreshToken: string) {
+    localStorage.setItem("auth_token", accessToken)
     localStorage.setItem("refresh_token", refreshToken)
   }
 
@@ -39,32 +39,39 @@ function handleApiError(error: any) {
 class AuthApiService {
   async login(credentials: { email: string; password: string }) {
     const resp = await api.auth.login(credentials)
-    if (resp.success && resp.data?.token) {
-      TokenManager.setTokens(resp.data.token, resp.data.refreshToken)
+    if (resp.success && resp.data?.accessToken) {
+      TokenManager.setTokens(resp.data.accessToken, resp.data.refreshToken)
     }
     return resp
   }
 
   async register(data: UserRegistration & { confirmPassword: string }) {
     const resp = await api.auth.register(data)
-    if (resp.success && resp.data?.token) {
-      TokenManager.setTokens(resp.data.token, resp.data.refreshToken)
+    if (resp.success && resp.data?.accessToken) {
+      TokenManager.setTokens(resp.data.accessToken, resp.data.refreshToken)
     }
     return resp
   }
 
   async refreshToken() {
     const refreshToken = TokenManager.getRefreshToken()
+    if (!refreshToken) {
+      throw new Error("No refresh token available")
+    }
+    
     const resp = await api.auth.refreshToken({ refreshToken })
-    if (resp.success && resp.data?.token) {
-      TokenManager.setTokens(resp.data.token, resp.data.refreshToken)
+    if (resp.success && resp.data?.accessToken) {
+      TokenManager.setTokens(resp.data.accessToken, resp.data.refreshToken)
     }
     return resp
   }
 
   async logout() {
     try {
-      await api.auth.logout()
+      const refreshToken = TokenManager.getRefreshToken()
+      if (refreshToken) {
+        await api.auth.logout()
+      }
     } finally {
       TokenManager.clearTokens()
     }
@@ -80,7 +87,7 @@ class AuthApiService {
   }
 
   async deleteAccount() {
-    const resp = await apiClient.delete<ApiResponse<{ message: string }>>("/auth/account")
+    const resp = await api.delete<ApiResponse<{ message: string }>>("/auth/account")
     TokenManager.clearTokens()
     return resp
   }
@@ -99,6 +106,14 @@ class AuthApiService {
 
   async verifyEmail(token: string) {
     return api.auth.verifyEmail(token)
+  }
+
+  async getUserSessions() {
+    return api.get("/auth/sessions")
+  }
+
+  async revokeAllSessions() {
+    return api.delete("/auth/sessions")
   }
 }
 
@@ -205,6 +220,34 @@ export function useDeleteAccount() {
       console.error("Account deletion failed:", handleApiError(error))
       queryClient.clear()
       TokenManager.clearTokens()
+    },
+  })
+}
+
+export function useGetUserSessions() {
+  return useQuery({
+    queryKey: ["auth", "sessions"],
+    queryFn: async () => {
+      const resp = await authApiService.getUserSessions()
+      return resp.data
+    },
+    staleTime: 30 * 1000, // 30 seconds
+    retry: (failureCount, error: any) => {
+      if (error?.status === 401) return false
+      return failureCount < 2
+    },
+  })
+}
+
+export function useRevokeAllSessions() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => authApiService.revokeAllSessions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["auth", "sessions"] })
+    },
+    onError: (error) => {
+      console.error("Revoke sessions failed:", handleApiError(error))
     },
   })
 }

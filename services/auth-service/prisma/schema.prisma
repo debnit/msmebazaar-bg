@@ -16,6 +16,8 @@ model User {
   name          String
   emailVerified Boolean         @default(false)
   isActive      Boolean         @default(true)
+  isPro         Boolean         @default(false)
+  onboardedProAt DateTime?      // When user was upgraded to Pro
   lastLoginAt   DateTime?
   
   // Relations

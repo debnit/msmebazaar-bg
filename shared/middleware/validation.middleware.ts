@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { z, ZodError, ZodSchema } from 'zod';
+import { RequestHandler } from 'express';
+
 
 // Validation middleware factory
 export const validateSchema = (schema: {
@@ -98,13 +100,19 @@ export const formatValidationError = (error: ZodError) => {
 // Common validation schemas for parameters
 export const commonSchemas = {
   id: z.object({
-    id: z.string().cuid('Invalid ID format'),
-  }),
+  id: z.string().regex(/^c[^\s-]{8,}$/, 'Invalid ID format'),
+}),
+
   
   pagination: z.object({
-    page: z.string().transform(val => parseInt(val, 10)).pipe(z.number().int().min(1)).default('1'),
-    limit: z.string().transform(val => parseInt(val, 10)).pipe(z.number().int().min(1).max(100)).default('20'),
-  }),
+  page: z
+    .preprocess(val => parseInt(String(val || '1'), 10), z.number().int().min(1))
+    .default(1),
+  limit: z
+    .preprocess(val => parseInt(String(val || '20'), 10), z.number().int().min(1).max(100))
+    .default(20),
+}),
+
   
   search: z.object({
     q: z.string().max(200).optional(),
@@ -133,6 +141,7 @@ export const asyncValidate = <T>(
         message: 'Validation error',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+      console.error('Validation middleware error:', error);
     }
   };
 };

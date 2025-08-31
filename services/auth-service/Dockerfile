@@ -61,9 +61,9 @@ RUN if [ -d "/app/services/auth-service/prisma" ]; then       cp -r /app/service
 
 USER auth-service
 
-EXPOSE 3002
+EXPOSE 8004
 
-ENV PORT 3002
+ENV PORT 8004
 ENV HOSTNAME "0.0.0.0"
 
 # Run database migrations and start the service

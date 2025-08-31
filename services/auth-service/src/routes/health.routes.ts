@@ -1,56 +1,72 @@
 // services/auth-service/src/routes/health.routes.ts
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { SessionService } from '../services/session.service';
+import { getClientIP } from '../middlewares/ipExtractor';
 
 const router = Router();
-const prisma = new PrismaClient();
 
-interface HealthCheck {
-  uptime: number;
-  message: string;
-  timestamp: number;
-  services: {
-    database: 'healthy' | 'unhealthy';
-    memory: {
-      used: number;
-      total: number;
-      percentage: number;
-    };
-  };
-}
+// Basic health check
+router.get('/', (req: Request, res: Response) => {
+  const clientIP = getClientIP(req);
+  
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'auth-service',
+    version: process.env.npm_package_version || '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    clientIP: clientIP
+  });
+});
 
-router.get('/health', async (req: Request, res: Response) => {
-  const healthcheck: HealthCheck = {
-    uptime: process.uptime(),
-    message: 'OK',
-    timestamp: Date.now(),
-    services: {
-      database: 'unhealthy',
-      memory: {
-        used: 0,
-        total: 0,
-        percentage: 0
-      }
-    }
-  };
-
+// Detailed health check with database connectivity
+router.get('/detailed', async (req: Request, res: Response) => {
   try {
-    // Database health check
-    await prisma.$queryRaw`SELECT 1`;
-    healthcheck.services.database = 'healthy';
-
-    // Memory usage check
-    const memUsage = process.memoryUsage();
-    healthcheck.services.memory = {
-      used: Math.round(memUsage.heapUsed / 1024 / 1024),
-      total: Math.round(memUsage.heapTotal / 1024 / 1024),
-      percentage: Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100)
-    };
-
-    res.status(200).json(healthcheck);
+    const clientIP = getClientIP(req);
+    
+    // Get session statistics
+    const sessionStats = await SessionService.getSessionStats();
+    
+    res.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      service: 'auth-service',
+      version: process.env.npm_package_version || '1.0.0',
+      environment: process.env.NODE_ENV || 'development',
+      clientIP: clientIP,
+      database: 'connected',
+      sessions: sessionStats,
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      pid: process.pid
+    });
   } catch (error) {
-    healthcheck.message = 'Service Degraded';
-    res.status(503).json(healthcheck);
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      service: 'auth-service',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      clientIP: getClientIP(req)
+    });
+  }
+});
+
+// Session statistics endpoint
+router.get('/sessions', async (req: Request, res: Response) => {
+  try {
+    const stats = await SessionService.getSessionStats();
+    res.json({
+      success: true,
+      data: stats,
+      timestamp: new Date().toISOString(),
+      clientIP: getClientIP(req)
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get session statistics',
+      clientIP: getClientIP(req)
+    });
   }
 });
 

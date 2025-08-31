@@ -1,3 +1,4 @@
+//program for payment-service/src/config/env.ts
 import dotenv from "dotenv";
 import path from "path";
 
@@ -22,14 +23,14 @@ interface EnvConfig {
 }
 
 export const env: EnvConfig = {
-  port: Number(process.env["SERVICE_PORT"] || 8029),
+  port: Number(process.env["SERVICE_PORT"] || 8017),
   nodeEnv: (process.env["NODE_ENV"] as any) || "development",
-  dbUrl: process.env["DATABASE_URL"] || ,
-  jwtSecret: process.env["JWT_SECRET"] || "",
+  dbUrl: process.env["DATABASE_URL"] || "postgresql://postgres:postgres@localhost:5432/msmebazaar" ,
+  jwtSecret: process.env["JWT_SECRET"] || "your-super-secret-jwt-key",
   razorpay: {
     keyId: process.env["RAZORPAY_KEY_ID"] || "your_key_id",
-    keySecret: process.env["RAZORPAY_KEY_SECRET"] || "",
-    webhookSecret: process.env["RAZORPAY_WEBHOOK_SECRET"] || "",
+    keySecret: process.env["RAZORPAY_KEY_SECRET"] || "your_key_secret",
+    webhookSecret: process.env["RAZORPAY_WEBHOOK_SECRET"] || "your_webhook_secret_here",
   },
   kafkaBrokers: (process.env["KAFKA_BROKERS"] || "localhost:9092")
     .split(",")
@@ -37,3 +38,4 @@ export const env: EnvConfig = {
   kafkaConsumerGroupId: process.env["KAFKA_CONSUMER_GROUP_ID"] || "payment-service-group",
   logLevel: (process.env["LOG_LEVEL"] as any) || "info",
 };
+

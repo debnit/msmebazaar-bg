@@ -9,7 +9,9 @@ export function errorHandler(
   res: Response,
   next: NextFunction
 ) {
-  logger.error("API error", { error: err.message, stack: err.stack });
+  logger.error(
+  `API error: ${err.message} | stack: ${err.stack}`
+);
 
   if (err instanceof PaymentError) {
     return res.status(err.statusCode).json({ success: false, message: err.message });

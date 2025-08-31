@@ -1,44 +1,60 @@
-// PRODUCTION-ENHANCED PRISMA CLIENT
-import { PrismaClient } from "@prisma/client";
+// src/prisma.ts
+import { PrismaClient, Prisma } from "@prisma/client";
 import { logger } from "../utils/logger";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+// Global singleton for hot reloads
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-const prisma = globalForPrisma.prisma ??
+// Create Prisma client
+const prisma: PrismaClient =
+  globalForPrisma.prisma ??
   new PrismaClient({
     log: [
-      { level: 'query', emit: 'event' },
-      { level: 'error', emit: 'event' },
-      { level: 'warn', emit: 'event' },
+      { level: "query", emit: "event" } as Prisma.LogDefinition,
+      { level: "info", emit: "event" } as Prisma.LogDefinition,
+      { level: "warn", emit: "event" } as Prisma.LogDefinition,
+      { level: "error", emit: "event" } as Prisma.LogDefinition,
     ],
-    errorFormat: 'pretty',
+    errorFormat: "pretty",
   });
 
-// Enhanced logging for production
-prisma.$on('query', (e) => {
-  if (process.env.NODE_ENV === 'development') {
-    logger.debug('Database query executed', {
-      query: e.query,
-      params: e.params,
-      duration: e.duration,
-    });
+// ✅ Event listeners
+// query
+(prisma.$on as any)("query", (e: Prisma.QueryEvent) => {
+  console.log("\x1b[36m%s\x1b[0m", "[Prisma Query]");
+  console.log("Query:", e.query);
+  console.log("Params:", e.params);
+  console.log("Duration:", e.duration, "ms");
+});
+
+
+// info/warn/error
+(prisma.$on as any)("info", (e: Prisma.LogEvent) =>
+  console.info("\x1b[32m%s\x1b[0m", "[Prisma Info]", e.message)
+);
+(prisma.$on as any)("warn", (e: Prisma.LogEvent) =>
+  console.warn("\x1b[33m%s\x1b[0m", "[Prisma Warn]", e.message)
+);
+(prisma.$on as any)("error", (e: Prisma.LogEvent) =>
+  console.error("\x1b[31m%s\x1b[0m", "[Prisma Error]", e.message)
+);
+ 
+
+// Hot reload singleton
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+// ✅ Handle disconnect on process beforeExit
+process.once("beforeExit", async () => {
+  try {
+    logger.info("Disconnecting Prisma client...");
+    await prisma.$disconnect();
+  } catch (err:unknown) {
+      const errorMessage =
+      err instanceof Error ? err.message : JSON.stringify(err);
+      logger.error(`Error disconnecting Prisma client: ${errorMessage}`);
+
   }
 });
 
-prisma.$on('error', (e) => {
-  logger.error('Database error occurred', {
-    target: e.target,
-    message: e.message,
-  });
-});
-
-// Connection health check
-prisma.$on('beforeExit', async () => {
-  logger.info('Prisma client disconnecting...');
-});
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
 export default prisma;
+
