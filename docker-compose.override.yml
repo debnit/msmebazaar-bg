@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # API Gateway - Development overrides
+  api-gateway:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+      # Force IPv4 for service communication
+      - AUTH_SERVICE_URL=http://auth-service:8004
+      - PAYMENT_SERVICE_URL=http://payment-service:8009
+      - BUYER_SERVICE_URL=http://buyer-service:8001
+      - SELLER_SERVICE_URL=http://seller-service:8002
+      - LOAN_SERVICE_URL=http://loan-service:8006
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8008
+      - ADMIN_SERVICE_URL=http://admin-service:8009
+      - SUPERADMIN_SERVICE_URL=http://superadmin-service:8010
+      - INVESTOR_SERVICE_URL=http://investor-service:8011
+      - AGENT_SERVICE_URL=http://agent-service:8012
+    volumes:
+      - ./api-gateway:/app/api-gateway
+      - /app/api-gateway/node_modules
+    command: npm run dev
+
+  # Auth Service - Development overrides
+  auth-service:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+      - CORS_ORIGIN=http://localhost:3000
+    volumes:
+      - ./services/auth-service:/app/services/auth-service
+      - /app/services/auth-service/node_modules
+    command: npm run dev
+
+  # Payment Service - Development overrides
+  payment-service:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./services/payment-service:/app/services/payment-service
+      - /app/services/payment-service/node_modules
+    command: npm run dev
+
+  # Buyer Service - Development overrides
+  buyer-service:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./services/buyer-service:/app/services/buyer-service
+      - /app/services/buyer-service/node_modules
+    command: npm run dev
+
+  # Seller Service - Development overrides
+  seller-service:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./services/sellerservice:/app/services/sellerservice
+      - /app/services/sellerservice/node_modules
+    command: npm run dev
+
+  # Admin Service - Development overrides
+  admin-service:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./services/admin-service:/app/services/admin-service
+      - /app/services/admin-service/node_modules
+    command: npm run dev
+
+  # Superadmin Service - Development overrides
+  superadmin-service:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./services/superadmin-service:/app/services/superadmin-service
+      - /app/services/superadmin-service/node_modules
+    command: npm run dev
+
+  # Investor Service - Development overrides
+  investor-service:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./services/investor-service:/app/services/investor-service
+      - /app/services/investor-service/node_modules
+    command: npm run dev
+
+  # Agent Service - Development overrides
+  agent-service:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./services/agent-service:/app/services/agent-service
+      - /app/services/agent-service/node_modules
+    command: npm run dev
+
+  # Loan Service - Development overrides
+  loan-service:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./services/loan-service:/app/services/loan-service
+      - /app/services/loan-service/node_modules
+    command: npm run dev
+
+  # Notification Service - Development overrides
+  notification-service:
+    environment:
+      - NODE_ENV=development
+      - LOG_LEVEL=debug
+    volumes:
+      - ./services/notification-service:/app/services/notification-service
+      - /app/services/notification-service/node_modules
+    command: npm run dev
+
+  # Frontend - Development overrides
+  frontend:
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_API_URL=http://localhost:3001
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/node_modules
+      - /app/frontend/.next
+    command: npm run dev
+
+networks:
+  msmebazaar-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1

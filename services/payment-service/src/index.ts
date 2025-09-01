@@ -34,7 +34,7 @@ class PaymentService {
   }
 
   private setupRoutes(): void {
-    this.app.use("/payments", paymentRoutes);
+    this.app.use("/payment", paymentRoutes);
     this.app.get("/health", this.healthCheck);
     this.app.get("/ready", this.readinessCheck);
   }

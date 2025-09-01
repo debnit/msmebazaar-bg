@@ -14,9 +14,6 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^6.0.0
         version: 6.21.0(eslint@8.57.1)(typescript@5.9.2)
-      axios:
-        specifier: ^1.11.0
-        version: 1.11.0
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
@@ -29,6 +26,9 @@ importers:
       eslint-plugin-prettier:
         specifier: ^5.0.0
         version: 5.5.4(eslint-config-prettier@9.1.2(eslint@8.57.1))(eslint@8.57.1)(prettier@3.6.2)
+      http-proxy-middleware:
+        specifier: ^3.0.5
+        version: 3.0.5
       husky:
         specifier: ^8.0.0
         version: 8.0.3
@@ -10669,7 +10669,7 @@ snapshots:
 
   '@types/http-proxy@1.17.16':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 22.18.0
 
   '@types/istanbul-lib-coverage@2.0.6': {}
 

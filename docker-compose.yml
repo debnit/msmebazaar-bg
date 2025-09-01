@@ -52,6 +52,17 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
+      # Service URLs for inter-service communication
+      - AUTH_SERVICE_URL=http://auth-service:8004
+      - PAYMENT_SERVICE_URL=http://payment-service:8009
+      - BUYER_SERVICE_URL=http://buyer-service:8001
+      - SELLER_SERVICE_URL=http://seller-service:8002
+      - LOAN_SERVICE_URL=http://loan-service:8006
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8008
+      - ADMIN_SERVICE_URL=http://admin-service:8009
+      - SUPERADMIN_SERVICE_URL=http://superadmin-service:8010
+      - INVESTOR_SERVICE_URL=http://investor-service:8011
+      - AGENT_SERVICE_URL=http://agent-service:8012
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,6 +83,28 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8004
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - CORS_ORIGIN=http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - msmebazaar-network
+    restart: unless-stopped
+
+  # Payment Service
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: msmebazaar-payment-service
+    ports:
+      - "8009:8009"
+    environment:
+      - NODE_ENV=production
+      - PORT=8009
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
@@ -135,6 +168,90 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8002
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - msmebazaar-network
+    restart: unless-stopped
+
+  # Admin Service
+  admin-service:
+    build:
+      context: ./services/admin-service
+      dockerfile: Dockerfile
+    container_name: msmebazaar-admin-service
+    ports:
+      - "8009:8009"
+    environment:
+      - NODE_ENV=production
+      - PORT=8009
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - msmebazaar-network
+    restart: unless-stopped
+
+  # Superadmin Service
+  superadmin-service:
+    build:
+      context: ./services/superadmin-service
+      dockerfile: Dockerfile
+    container_name: msmebazaar-superadmin-service
+    ports:
+      - "8010:8010"
+    environment:
+      - NODE_ENV=production
+      - PORT=8010
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - msmebazaar-network
+    restart: unless-stopped
+
+  # Investor Service
+  investor-service:
+    build:
+      context: ./services/investor-service
+      dockerfile: Dockerfile
+    container_name: msmebazaar-investor-service
+    ports:
+      - "8011:8011"
+    environment:
+      - NODE_ENV=production
+      - PORT=8011
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - msmebazaar-network
+    restart: unless-stopped
+
+  # Agent Service
+  agent-service:
+    build:
+      context: ./services/agent-service
+      dockerfile: Dockerfile
+    container_name: msmebazaar-agent-service
+    ports:
+      - "8012:8012"
+    environment:
+      - NODE_ENV=production
+      - PORT=8012
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_URL=redis://redis:6379
@@ -242,4 +359,8 @@ volumes:
 networks:
   msmebazaar-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          gateway: 172.20.0.1
 

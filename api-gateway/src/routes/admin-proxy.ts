@@ -1,26 +1,88 @@
-// api-gateway/src/routes/admin-proxy.ts
 import { Router } from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { requireAuth } from "../middlewares/auth";
 import { requireFeature } from "../middlewares/requireFeature";
 import { jwtMw } from "@msmebazaar/shared/auth";
 import { Config } from "../config";
-
 import { Feature } from "@msmebazaar/types/feature";
 
 const router: Router = Router();
 
-// Apply auth and feature gating before proxying requests to admin service
+// Get service URL from environment or use default
+const ADMIN_SERVICE_URL = process.env.ADMIN_SERVICE_URL || "http://localhost:8003";
+
+console.log('[Admin Proxy] Using ADMIN_SERVICE_URL:', ADMIN_SERVICE_URL);
+
+// Logging middleware
+router.use((req, res, next) => {
+  console.log(`[Admin Proxy] Received: ${req.method} ${req.originalUrl}`);
+  next();
+});
+
+// Common error handler for proxy middleware
+const createErrorHandler = (routeName: string) => {
+  return (err: any, req: any, res: any) => {
+    console.error(`[Admin Proxy Error] ${routeName} - ${req.method} ${req.originalUrl}:`, err.message);
+    if (!res.headersSent) {
+      res.status(502).json({
+        error: 'Bad Gateway',
+        message: `Service temporarily unavailable: ${err.message}`,
+        route: routeName
+      });
+    }
+  };
+};
+
+// Common proxy configuration
+const createProxyConfig = (pathRewrite: Record<string, string>, routeName: string) => ({
+  target: ADMIN_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite,
+  on: {
+    error: createErrorHandler(routeName),
+    proxyReq: (proxyReq: any, req: any, res: any) => {
+      console.log(`[Admin Proxy] Proxying ${req.method} ${req.originalUrl} to ${ADMIN_SERVICE_URL}${proxyReq.path}`);
+    },
+    proxyRes: (proxyRes: any, req: any, res: any) => {
+      console.log(`[Admin Proxy] Response from ${routeName}: ${proxyRes.statusCode}`);
+    }
+  }
+});
+
+// Admin service routes
 router.use(
   "/admin",
-  jwtMw(Config["jwtSecret"], true),  // Add JWT middleware for authentication
+  jwtMw(Config["jwtSecret"], true),
   requireAuth,
-  requireFeature(Feature.ADMIN_SERVICES), // Gates entire admin API to allowed users
-  createProxyMiddleware({
-    target: process.env.ADMIN_SERVICE_URL || "http://localhost:8003",
-    changeOrigin: true,
-    pathRewrite: { "^/admin": "/admin" },
-  })
+  requireFeature(Feature.ADMIN_SERVICES),
+  createProxyMiddleware(
+    createProxyConfig({ "^/admin": "/admin" }, 'admin-service')
+  )
 );
+
+// Health check endpoint
+router.use('/admin/health', createProxyMiddleware({
+  target: ADMIN_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: { '^/admin/health': '/health' },
+  on: {
+    error: createErrorHandler('admin-health'),
+    proxyReq: (proxyReq: any, req: any, res: any) => {
+      console.log(`[Admin Proxy] Health check: ${req.method} ${req.originalUrl}`);
+    }
+  }
+}));
+
+// Catch-all for unmatched admin routes
+router.use((req, res) => {
+  console.warn(`[Admin Proxy] No route matched: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    error: 'Not Found',
+    message: `Admin route not found: ${req.originalUrl}`,
+    availableRoutes: [
+      '/admin', '/admin/health'
+    ]
+  });
+});
 
 export default router;

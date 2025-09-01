@@ -12,7 +12,7 @@ import { SessionUser } from "@msmebazaar/types/user";
 export const requireFeature = (feature: Feature) => {
   return (req: Request & { user?: SessionUser }, res: Response, next: NextFunction)  => {
     if (!req.user) {
-       res.status(401).json({ success: false, message: "Authentication required" });
+       return res.status(401).json({ success: false, message: "Authentication required" });
     }
 
     const user = req.user;

@@ -37,14 +37,9 @@ app.use(cors({
 
 
 
-
-
-
-
-
-
 // Remove global JWT middleware - apply selectively to protected routes only
-// app.use(jwtMw(Config["jwtSecret"], true));  // ❌ This was causing 401 errors on public routes
+ //app.use(jwtMw(Config["jwtSecret"], true));  // ❌ This was causing 401 errors on public routes
+app.use(express.json());
 
 app.use("/api", routes);
 app.use('/auth',authProxyRouter);  // ✅ Auth routes (login/register) now work without JWT
@@ -71,7 +66,3 @@ app.listen(process.env["GATEWAY_PORT"] || 7000, () => {
   console.log(`API Gateway running on port ${process.env["GATEWAY_PORT"] || 7000}`);
 });
 
-app.use((req, res) => {
-  console.warn(`No route found for ${req.method} ${req.originalUrl}`);
-  res.status(404).json({ status: 'error', statusCode: 404, message: 'Route / not found' });
-})
