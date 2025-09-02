@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { msmeSchema } from "../../../shared/validation/msme.schema";
+import { msmeSchema } from "@msmebazaar/shared/validation/msme.schema";
 
 export const matchmakingCreateSchema = z.object({
   msmeId: z.string().uuid(),

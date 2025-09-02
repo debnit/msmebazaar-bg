@@ -27,6 +27,25 @@ class MatchmakingService {
   async getMatchesByMsme(msmeId: string) {
     return prisma.matchmaking.findMany({ where: { msmeId } });
   }
+
+  async createMatch(matchData: { msmeId: string; matchedEntityId: string; score: number }) {
+    const createdMatch = await prisma.matchmaking.create({
+      data: {
+        msmeId: matchData.msmeId,
+        matchedEntityId: matchData.matchedEntityId,
+        score: matchData.score,
+        createdAt: new Date(),
+      },
+    });
+
+    await produceMatchmakingEvent({
+      msmeId: matchData.msmeId,
+      matchedEntityId: matchData.matchedEntityId,
+      score: matchData.score,
+    });
+
+    return createdMatch;
+  }
 }
 
 export default new MatchmakingService();

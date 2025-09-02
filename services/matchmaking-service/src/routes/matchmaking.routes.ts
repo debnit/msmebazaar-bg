@@ -1,12 +1,15 @@
 import { Router } from "express";
-import { requireAuth, requireProUser } from "@shared/middleware/auth";
+import  requireAuth  from "../middlewares/requireAuth";
+import {  requireRole } from "@msmebazaar/shared/middleware/auth";
 import { createMatchController, getMatchesController } from "../controllers/matchmaking.controller";
 
 const router = Router();
 
-router.post("/", requireAuth, createMatchController);
-router.get("/", requireAuth, getMatchesController);
+router.post("/matchmaking", jwtMw, createMatchController);
+router.get("/matchmaking", jwtMw, getMatchesController);
+
 // Expose special matchmaking for pro/early buyers:
-router.get("/premium", requireAuth, requireProUser, getMatchesController);
+
+router.get("/premium", jwtMw, requireRole, getMatchesController);
 
 export default router;
