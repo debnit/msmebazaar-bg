@@ -80,7 +80,7 @@ export const addUserRole = async (req: Request, res: Response, next: NextFunctio
       throw new AppError('User ID and role are required', 400);
     }
 
-    const result = await AuthService.addUserRole(userId, role);
+   const result = await AuthService.addUserRole(userId, role);
     
     res.json(result);
   } catch (error) {
