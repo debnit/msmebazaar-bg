@@ -1,6 +1,6 @@
 // services/recommendation-service/src/services/listings.ts
 
-import prisma from "../db/prismaClient";
+import {prisma} from "../db/prismaClient";
 
 export async function fetchCandidateListings(filters: {
   sector?: string;

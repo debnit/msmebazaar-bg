@@ -275,3 +275,16 @@ enum ModelStatus {
   DEPRECATED
   FAILED
 }
+model ListingCatalog {
+  listingId    String   @id @default(cuid())
+  title        String
+  description  String?
+  sector       String?
+  state        String?
+  tags         String[]
+  minTicketInr Int?
+  maxTicketInr Int?
+  status       String  @default("active")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

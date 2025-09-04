@@ -2,7 +2,7 @@ import express from "express";
 import { Config } from "./config/env";
 import { logger } from "./utils/logger";
 import cors from "cors";
-import { startConsumer } from "./kafka/consumer";
+import { startRecoConsumer } from "./kafka/consumer";
 import recommendationRoutes from "./routes/recommendation.routes";
 
 
@@ -14,7 +14,7 @@ app.use(cors());
 
 app.listen(Config.port, () => {
   logger.info("recommendation-service running on port " + Config.port);
-  startConsumer().catch(err => logger.error("Kafka consumer failed:", err));
+  startRecoConsumer().catch((err: any) => logger.error("Kafka consumer failed:", err));
 });
 
 app.use('/recommendations', recommendationRoutes);

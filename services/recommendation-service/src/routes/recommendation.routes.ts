@@ -1,6 +1,13 @@
 import { Router } from "express";
 import requireAuth from "../middlewares/requireAuth";
+import {
+  getPersonalizedRecommendations,
+  getUserRecommendationHistory,
+  
+} from '../controllers/recommendation.controller';
+
 import { RecommendationController } from '../controllers/recommendation.controller';
+
 import { validateRequest } from "../middlewares/validateRequest";
 import { recommendationRequestSchema } from "@msmebazaar/shared/validation/recommendation.schema";
 
@@ -13,7 +20,7 @@ router.post(
   RecommendationController.getPersonalizedRecommendations
 );
 
-router.get("/history", controller.getUserRecommendationHistory);
+router.get("/history", RecommendationController.getUserRecommendationHistory);
 router.get("/listings", RecommendationController.getRecommendations);
 router.post("/events", RecommendationController.logEvent);
 
