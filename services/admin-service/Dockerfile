@@ -1,70 +1,62 @@
 # Multi-stage build for admin-service
 FROM node:20-alpine AS base
 
-# Install dependencies only when needed
-FROM base AS deps
+# Common base setup
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy root package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# ----------------------
+# Install dependencies
+# ----------------------
+FROM base AS deps
 
-# Copy entire workspace structure for proper workspace dependency resolution
-COPY shared/ ./shared/
-COPY services/admin-service/ ./services/admin-service/
+# Copy only root-level deps first (better caching)
+COPY package*.json pnpm-lock.yaml* tsconfig.json ./
 
-# Upgrade npm for workspace support
-RUN npm install -g npm@latest
+# Workspace deps
+COPY shared/package*.json ./shared/
+COPY services/admin-service/package*.json ./services/admin-service/
 
-# Install dependencies with workspace support
-RUN npm install --workspaces --omit=dev
+# Install pnpm and deps
+RUN npm install -g pnpm@latest && pnpm install --frozen-lockfile --recursive
 
-# Build shared library
-FROM base AS shared-builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY shared/ ./shared/
-COPY tsconfig.json ./
-RUN cd shared && npm run build
+# ----------------------
+# Build shared lib
+# ----------------------
+FROM deps AS shared-builder
+COPY shared ./shared
+RUN cd shared && pnpm run build
 
+# ----------------------
 # Build admin-service
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# ----------------------
+FROM deps AS builder
 COPY --from=shared-builder /app/shared/dist ./shared/dist
-COPY services/admin-service/ ./services/admin-service/
-COPY tsconfig.json ./
+COPY services/admin-service ./services/admin-service
+RUN cd services/admin-service && pnpm run build && \
+    if [ -d "prisma" ]; then npx prisma generate; fi
 
-# Generate Prisma client if prisma directory exists
-RUN if [ -d "services/admin-service/prisma" ]; then cd services/admin-service && npx prisma generate; fi
-
-# Build the service
-RUN cd services/admin-service && npm run build
-
-# Production image
+# ----------------------
+# Production runner
+# ----------------------
 FROM base AS runner
+
+ENV NODE_ENV=production
+ENV PORT=8009
+ENV HOSTNAME=0.0.0.0
+
+RUN addgroup --system --gid 1001 nodejs \
+ && adduser --system --uid 1001 admin-service
+
+# Copy build artifacts
 WORKDIR /app
-
-ENV NODE_ENV production
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 admin-service
-
-# Copy the built application
 COPY --from=builder --chown=admin-service:nodejs /app/services/admin-service/dist ./dist
 COPY --from=builder --chown=admin-service:nodejs /app/services/admin-service/package*.json ./
 COPY --from=deps --chown=admin-service:nodejs /app/node_modules ./node_modules
-
-# Copy Prisma files if they exist
-RUN if [ -d "/app/services/admin-service/prisma" ]; then       cp -r /app/services/admin-service/prisma ./prisma;     fi
+COPY --from=builder --chown=admin-service:nodejs /app/services/admin-service/prisma ./prisma
 
 USER admin-service
 
-EXPOSE 3020
+EXPOSE 8009
 
-ENV PORT 3020
-ENV HOSTNAME "0.0.0.0"
-
-# Run database migrations and start the service
 CMD ["sh", "-c", "if [ -d './prisma' ]; then npx prisma migrate deploy; fi && node dist/index.js"]

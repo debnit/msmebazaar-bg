@@ -40,6 +40,7 @@ var Feature;
     Feature["LOAN_SERVICES"] = "LOAN_SERVICES";
     Feature["BUYER_SERVICES"] = "BUYER_SERVICES";
     Feature["SELLER_SERVICES"] = "SELLER_SERVICES";
+    Feature["COMPLIANCE_SERVICES"] = "COMPLIANCE_SERVICES";
 })(Feature || (exports.Feature = Feature = {}));
 var UserRole;
 (function (UserRole) {

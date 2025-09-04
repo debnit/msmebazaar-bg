@@ -1,155 +1,76 @@
-# Multi-stage build for Node.js Investor Service
-FROM node:18-alpine AS base
+# Multi-stage build for investor-service
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk add --no-cache libc6-compat
-
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm i --frozen-lockfile; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+# Copy root package files
+COPY package*.json ./
+COPY pnpm-lock.yaml ./
+COPY tsconfig.json ./
 
-# Rebuild the source code only when needed
+# Copy workspace structure
+COPY shared/ ./shared/
+COPY services/investor-service/ ./services/investor-service/
+
+# Install pnpm
+RUN npm install -g pnpm@latest
+
+# Install dependencies with workspace support
+RUN pnpm install --frozen-lockfile --recursive
+
+# Build shared library
+FROM base AS shared-builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY shared/ ./shared/
+COPY tsconfig.json ./
+RUN cd shared && pnpm run build
+
+# Build investor-service
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY --from=shared-builder /app/shared/dist ./shared/dist
+COPY services/investor-service/ ./services/investor-service/
+COPY tsconfig.json ./
 
-# Generate Prisma Client
-RUN npx prisma generate
+# Generate Prisma client if schema exists
+RUN if [ -d "services/investor-service/prisma" ]; then \
+      cd services/investor-service && npx prisma generate; \
+    fi
 
-# Build the application
-RUN \
-  if [ -f yarn.lock ]; then yarn build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm build; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+# Build the service
+RUN cd services/investor-service && pnpm run build
 
-# Production image, copy all the files and run the app
+# Production image
 FROM base AS runner
 WORKDIR /app
 
-# Create a non-root user to run the application
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 investor-service
+ENV NODE_ENV=production
 
-# Copy the built application
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 investor-service
 
-# Set correct permissions for the investor-service user
-RUN chown -R investor-service:nodejs /app
+# Copy built application
+COPY --from=builder --chown=investor-service:nodejs /app/services/investor-service/dist ./dist
+COPY --from=builder --chown=investor-service:nodejs /app/services/investor-service/package*.json ./
+COPY --from=deps --chown=investor-service:nodejs /app/node_modules ./node_modules
+
+# Copy Prisma files if present
+COPY --from=builder --chown=investor-service:nodejs /app/services/investor-service/prisma ./prisma
+
+# Prune devDependencies
+RUN pnpm prune --prod
+
 USER investor-service
 
-# Expose the port that the app runs on
-EXPOSE 3001
+EXPOSE 8026
+ENV PORT=8026
+ENV HOSTNAME=0.0.0.0
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
-
-# Environment variables
-ENV NODE_ENV=production
-ENV PORT=3001
-ENV DATABASE_URL=""
-ENV JWT_SECRET=""
-ENV RAZORPAY_KEY_ID=""
-ENV RAZORPAY_KEY_SECRET=""
-ENV REDIS_URL=""
-ENV EMAIL_SERVICE_URL=""
-ENV NOTIFICATION_SERVICE_URL=""
-
-# Start the application
-CMD ["npm", "start"]
-
-# Alternative Dockerfile for development
-FROM base AS development
-WORKDIR /app
-
-# Install development dependencies
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
-RUN \
-  if [ -f yarn.lock ]; then yarn install; \
-  elif [ -f package-lock.json ]; then npm install; \
-  elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm install; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
-
-# Copy source code
-COPY . .
-
-# Generate Prisma Client
-RUN npx prisma generate
-
-# Expose the port that the app runs on
-EXPOSE 3001
-
-# Environment variables for development
-ENV NODE_ENV=development
-ENV PORT=3001
-
-# Start the development server with hot reload
-CMD ["npm", "run", "dev"]
-
-# Docker Compose Usage Example:
-# 
-# version: '3.8'
-# services:
-#   investor-service:
-#     build:
-#       context: ./services/investor-service
-#       target: development
-#     ports:
-#       - "3001:3001"
-#     volumes:
-#       - ./services/investor-service:/app
-#       - /app/node_modules
-#     environment:
-#       - DATABASE_URL=postgresql://user:password@postgres:5432/investor_db
-#       - JWT_SECRET=your-jwt-secret
-#       - RAZORPAY_KEY_ID=your-razorpay-key
-#       - RAZORPAY_KEY_SECRET=your-razorpay-secret
-#       - REDIS_URL=redis://redis:6379
-#     depends_on:
-#       - postgres
-#       - redis
-#     networks:
-#       - investor-network
-#   
-#   postgres:
-#     image: postgres:15-alpine
-#     environment:
-#       - POSTGRES_USER=user
-#       - POSTGRES_PASSWORD=password
-#       - POSTGRES_DB=investor_db
-#     volumes:
-#       - postgres_data:/var/lib/postgresql/data
-#     ports:
-#       - "5432:5432"
-#     networks:
-#       - investor-network
-#   
-#   redis:
-#     image: redis:7-alpine
-#     ports:
-#       - "6379:6379"
-#     networks:
-#       - investor-network
-# 
-# volumes:
-#   postgres_data:
-# 
-# networks:
-#   investor-network:
-#     driver: bridge
+# Run database migrations and start service
+CMD ["sh", "-c", "if [ -d './prisma' ]; then npx prisma migrate deploy; fi && node dist/index.js"]

@@ -20,7 +20,7 @@ services:
     volumes:
       - ./api-gateway:/app/api-gateway
       - /app/api-gateway/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Auth Service - Development overrides
   auth-service:
@@ -31,7 +31,7 @@ services:
     volumes:
       - ./services/auth-service:/app/services/auth-service
       - /app/services/auth-service/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Payment Service - Development overrides
   payment-service:
@@ -41,7 +41,7 @@ services:
     volumes:
       - ./services/payment-service:/app/services/payment-service
       - /app/services/payment-service/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Buyer Service - Development overrides
   buyer-service:
@@ -51,7 +51,7 @@ services:
     volumes:
       - ./services/buyer-service:/app/services/buyer-service
       - /app/services/buyer-service/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Seller Service - Development overrides
   seller-service:
@@ -61,7 +61,7 @@ services:
     volumes:
       - ./services/sellerservice:/app/services/sellerservice
       - /app/services/sellerservice/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Admin Service - Development overrides
   admin-service:
@@ -71,7 +71,7 @@ services:
     volumes:
       - ./services/admin-service:/app/services/admin-service
       - /app/services/admin-service/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Superadmin Service - Development overrides
   superadmin-service:
@@ -81,7 +81,7 @@ services:
     volumes:
       - ./services/superadmin-service:/app/services/superadmin-service
       - /app/services/superadmin-service/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Investor Service - Development overrides
   investor-service:
@@ -91,7 +91,7 @@ services:
     volumes:
       - ./services/investor-service:/app/services/investor-service
       - /app/services/investor-service/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Agent Service - Development overrides
   agent-service:
@@ -101,7 +101,7 @@ services:
     volumes:
       - ./services/agent-service:/app/services/agent-service
       - /app/services/agent-service/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Loan Service - Development overrides
   loan-service:
@@ -111,7 +111,7 @@ services:
     volumes:
       - ./services/loan-service:/app/services/loan-service
       - /app/services/loan-service/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Notification Service - Development overrides
   notification-service:
@@ -121,19 +121,19 @@ services:
     volumes:
       - ./services/notification-service:/app/services/notification-service
       - /app/services/notification-service/node_modules
-    command: npm run dev
+    command: pnpm dev
 
   # Frontend - Development overrides
   frontend:
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=http://localhost:3001
-      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+      - NEXT_PUBLIC_APP_URL=http://localhost:7000
     volumes:
       - ./frontend:/app/frontend
       - /app/frontend/node_modules
       - /app/frontend/.next
-    command: npm run dev
+    command: pnpm dev
 
 networks:
   msmebazaar-network:

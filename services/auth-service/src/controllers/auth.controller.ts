@@ -224,3 +224,5 @@ export const verifyEmail = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
+

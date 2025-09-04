@@ -1,65 +1,79 @@
-# Multi-stage build for MSMEBazaar Platform
-FROM node:20-alpine AS base
+# Multi-stage build for MSMEBazaar Platform using pnpm
 
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+FROM node:20-alpine AS base
+RUN corepack enable
 WORKDIR /app
 
-# Copy root package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy top-level workspace files
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.json ./
 
-# Copy entire workspace structure for proper workspace dependency resolution
+# Copy workspace folders
 COPY shared/ ./shared/
 COPY api-gateway/ ./api-gateway/
 COPY frontend/ ./frontend/
 COPY services/ ./services/
 
-# Upgrade npm for workspace support
-RUN npm install -g npm@latest
+#
+# Dependencies (with Prisma schema folders)
+#
+FROM base AS deps
 
-# Install dependencies with workspace support
-RUN npm install --workspaces --omit=dev
+# Copy all Prisma schemas for every service
+COPY services/*/prisma/ ./services/
+# Now each service's schema is at /app/services/<svc>/prisma/*
 
-# Build shared library
+# Install dependencies (including dev)
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --recursive
+
+# Generate Prisma Client for each service that uses Prisma
+RUN for svc in ./services/*; do \
+      if [ -d "$svc/prisma" ] && [ -f "$svc/package.json" ]; then \
+        cd "$svc" && pnpm exec prisma generate || true ; \
+        cd - > /dev/null ; \
+      fi ; \
+    done
+
+#
+# Build shared, gateway, frontend as before...
+#
+
 FROM base AS shared-builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY shared/ ./shared/
 COPY tsconfig.json ./
-RUN cd shared && npm run build
+RUN pnpm --filter ./shared... build
 
-# Build API Gateway
 FROM base AS gateway-builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=shared-builder /app/shared/dist ./shared/dist
 COPY api-gateway/ ./api-gateway/
 COPY tsconfig.json ./
+RUN pnpm --filter ./api-gateway... build
 
-# Build the API Gateway
-RUN cd api-gateway && npm run build
-
-# Build Frontend
 FROM base AS frontend-builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=shared-builder /app/shared/dist ./shared/dist
 COPY frontend/ ./frontend/
 COPY tsconfig.json ./
-RUN cd frontend && npm run build
+RUN pnpm --filter ./frontend... build
 
-# Build Services
+# Build all Services in workspace
 FROM base AS services-builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=shared-builder /app/shared/dist ./shared/dist
 COPY services/ ./services/
 COPY tsconfig.json ./
-RUN cd services && for service in */; do cd "$service" && npm run build && cd ..; done
+RUN pnpm --filter ./services... build
 
-# Production image for API Gateway
+#
+# Production stages as before...
+#
+
 FROM base AS gateway-prod
 WORKDIR /app
 ENV NODE_ENV=production
@@ -69,27 +83,21 @@ COPY --from=deps /app/node_modules ./node_modules
 EXPOSE 3001
 CMD ["node", "dist/index.js"]
 
-# Production image for Frontend
 FROM base AS frontend-prod
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
-
 COPY --from=frontend-builder /app/frontend/public ./public
 COPY --from=frontend-builder /app/frontend/.next/standalone ./
 COPY --from=frontend-builder /app/frontend/.next/static ./.next/static
-
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-
 CMD ["node", "server.js"]
 
-# Production image for Services
 FROM base AS services-prod
 WORKDIR /app
 ENV NODE_ENV=production
@@ -97,4 +105,3 @@ COPY --from=services-builder /app/services ./services
 COPY --from=deps /app/node_modules ./node_modules
 EXPOSE 3002-3021
 CMD ["node", "services/auth-service/dist/index.js"]
-

@@ -1,70 +1,69 @@
 # Multi-stage build for search-matchmaking-service
 FROM node:20-alpine AS base
 
-# Install dependencies only when needed
+# -----------------------------
+# 1. Dependencies stage
+# -----------------------------
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy root package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy only package files for caching
+COPY package.json pnpm-lock.yaml ./
+COPY shared/package*.json ./shared/
+COPY services/search-matchmaking-service/package*.json ./services/search-matchmaking-service/
 
-# Copy entire workspace structure for proper workspace dependency resolution
-COPY shared/ ./shared/
-COPY services/search-matchmaking-service/ ./services/search-matchmaking-service/
+# Install deps with workspace support
+RUN npm install -g pnpm@latest
+RUN pnpm install --frozen-lockfile --recursive
 
-# Upgrade npm for workspace support
-RUN npm install -g npm@latest
-
-# Install dependencies with workspace support
-RUN npm install --workspaces --omit=dev
-
-# Build shared library
-FROM base AS shared-builder
+# -----------------------------
+# 2. Build stage
+# -----------------------------
+FROM deps AS build
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY shared/ ./shared/
-COPY tsconfig.json ./
-RUN cd shared && npm run build
 
-# Build search-matchmaking-service
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=shared-builder /app/shared/dist ./shared/dist
-COPY services/search-matchmaking-service/ ./services/search-matchmaking-service/
-COPY tsconfig.json ./
+# Copy all sources
+COPY . .
 
-# Generate Prisma client if prisma directory exists
-RUN if [ -d "services/search-matchmaking-service/prisma" ]; then cd services/search-matchmaking-service && npx prisma generate; fi
+# Build shared lib
+RUN cd shared && pnpm build
+
+# Generate Prisma client (if exists)
+RUN if [ -d "services/search-matchmaking-service/prisma" ]; then \
+      cd services/search-matchmaking-service && npx prisma generate; \
+    fi
 
 # Build the service
-RUN cd services/search-matchmaking-service && npm run build
+RUN cd services/search-matchmaking-service && pnpm build
 
-# Production image
+# -----------------------------
+# 3. Runtime stage
+# -----------------------------
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 search-matchmaking-service
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 search-matchmaking-service
 
-# Copy the built application
-COPY --from=builder --chown=search-matchmaking-service:nodejs /app/services/search-matchmaking-service/dist ./dist
-COPY --from=builder --chown=search-matchmaking-service:nodejs /app/services/search-matchmaking-service/package*.json ./
-COPY --from=deps --chown=search-matchmaking-service:nodejs /app/node_modules ./node_modules
+# Copy only necessary files
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/shared/dist ./shared/dist
+COPY --from=build /app/services/search-matchmaking-service/package*.json ./
+COPY --from=build /app/services/search-matchmaking-service/prisma ./prisma
+COPY --from=build /app/services/search-matchmaking-service/dist ./dist
 
-# Copy Prisma files if they exist
-RUN if [ -d "/app/services/search-matchmaking-service/prisma" ]; then       cp -r /app/services/search-matchmaking-service/prisma ./prisma;     fi
+# Prune dev dependencies
+RUN pnpm prune --prod
 
 USER search-matchmaking-service
 
-EXPOSE 3011
+EXPOSE 8019
+ENV PORT=8019
+ENV HOSTNAME=0.0.0.0
 
-ENV PORT 3011
-ENV HOSTNAME "0.0.0.0"
-
-# Run database migrations and start the service
-CMD ["sh", "-c", "if [ -d './prisma' ]; then npx prisma migrate deploy; fi && node dist/index.js"]
+# Start service (migrations should be run outside container)
+CMD ["node", "dist/index.js"]

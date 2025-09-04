@@ -137,7 +137,11 @@ export const FEATURE_ROLE_MAPPING: Record<Feature, { roles: UserRole[], proOnly:
   [Feature.INVESTOR_SERVICES]: { roles: [UserRole.INVESTOR], proOnly: false },
   [Feature.LOAN_SERVICES]: { roles: [UserRole.MSME_OWNER], proOnly: false },
   [Feature.BUYER_SERVICES]: { roles: [UserRole.BUYER], proOnly: false },
-  [Feature.SELLER_SERVICES]: { roles: [UserRole.SELLER], proOnly: false }
+  [Feature.SELLER_SERVICES]: { roles: [UserRole.SELLER], proOnly: false },
+  [Feature.COMPLIANCE_SERVICES]: {
+    roles: [],
+    proOnly: false
+  }
 };
 
 export class FeatureGatingService {

@@ -6,19 +6,18 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy root package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy root package files including lockfile + workspace file
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 
 # Copy entire workspace structure for proper workspace dependency resolution
 COPY shared/ ./shared/
 COPY services/superadmin-service/ ./services/superadmin-service/
 
 # Upgrade npm for workspace support
-RUN npm install -g npm@latest
+RUN npm install -g pnpm@latest
 
 # Install dependencies with workspace support
-RUN npm install --workspaces --omit=dev
+RUN pnpm install --frozen-lockfile --recursive
 
 # Build shared library
 FROM base AS shared-builder
@@ -26,7 +25,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY shared/ ./shared/
 COPY tsconfig.json ./
-RUN cd shared && npm run build
+RUN cd shared && pnpm run build
 
 # Build superadmin-service
 FROM base AS builder
@@ -34,13 +33,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=shared-builder /app/shared/dist ./shared/dist
 COPY services/superadmin-service/ ./services/superadmin-service/
-COPY tsconfig.json ./
+COPY tsconfig.json ./ 
 
 # Generate Prisma client if prisma directory exists
 RUN if [ -d "services/superadmin-service/prisma" ]; then cd services/superadmin-service && npx prisma generate; fi
 
 # Build the service
-RUN cd services/superadmin-service && npm run build
+RUN cd services/superadmin-service && pnpm run build
 
 # Production image
 FROM base AS runner
@@ -57,13 +56,15 @@ COPY --from=builder --chown=superadmin-service:nodejs /app/services/superadmin-s
 COPY --from=deps --chown=superadmin-service:nodejs /app/node_modules ./node_modules
 
 # Copy Prisma files if they exist
-RUN if [ -d "/app/services/superadmin-service/prisma" ]; then       cp -r /app/services/superadmin-service/prisma ./prisma;     fi
+RUN if [ -d "/app/services/superadmin-service/prisma" ]; then \
+      cp -r /app/services/superadmin-service/prisma ./prisma; \
+    fi
 
 USER superadmin-service
 
-EXPOSE 3009
+EXPOSE 8025
 
-ENV PORT 3009
+ENV PORT 8025
 ENV HOSTNAME "0.0.0.0"
 
 # Run database migrations and start the service

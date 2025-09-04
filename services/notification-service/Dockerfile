@@ -6,65 +6,63 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy root package files
-COPY package*.json ./
+# Install pnpm
+RUN npm install -g pnpm@latest
+
+# Copy root workspace files
+COPY pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml ./
 COPY tsconfig.json ./
 
-# Copy entire workspace structure for proper workspace dependency resolution
-COPY shared/ ./shared/
-COPY services/notification-service/ ./services/notification-service/
+# Copy shared workspace
+COPY shared ./shared
 
-# Upgrade npm for workspace support
-RUN npm install -g npm@latest
+# Copy only service package.json
+COPY services/notification-service/package.json ./services/notification-service/
 
-# Install dependencies with workspace support
-RUN npm install --workspaces --omit=dev
+# Install only notification-service dependencies
+WORKDIR /app/services/notification-service
+RUN pnpm install --frozen-lockfile --filter ./...
 
 # Build shared library
 FROM base AS shared-builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY shared/ ./shared/
+COPY shared ./shared
 COPY tsconfig.json ./
-RUN cd shared && npm run build
+RUN cd shared && pnpm run build
 
 # Build notification-service
 FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=shared-builder /app/shared/dist ./shared/dist
-COPY services/notification-service/ ./services/notification-service/
-COPY tsconfig.json ./
-
-# Generate Prisma client if prisma directory exists
-RUN if [ -d "services/notification-service/prisma" ]; then cd services/notification-service && npx prisma generate; fi
-
-# Build the service
-RUN cd services/notification-service && npm run build
+WORKDIR /app/services/notification-service
+COPY --from=deps /app/node_modules ../../node_modules
+COPY --from=shared-builder /app/shared/dist ../../shared/dist
+COPY . .
+RUN if [ -d "prisma" ]; then npx prisma generate; fi
+RUN pnpm run build
 
 # Production image
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 notification-service
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 notification-service
 
-# Copy the built application
+# Copy built app
 COPY --from=builder --chown=notification-service:nodejs /app/services/notification-service/dist ./dist
 COPY --from=builder --chown=notification-service:nodejs /app/services/notification-service/package*.json ./
 COPY --from=deps --chown=notification-service:nodejs /app/node_modules ./node_modules
 
-# Copy Prisma files if they exist
-RUN if [ -d "/app/services/notification-service/prisma" ]; then       cp -r /app/services/notification-service/prisma ./prisma;     fi
+# Copy prisma if exists
+COPY --from=builder --chown=notification-service:nodejs /app/services/notification-service/prisma ./prisma
 
 USER notification-service
 
-EXPOSE 3012
+EXPOSE 8008
+ENV PORT=8008
+ENV HOSTNAME=0.0.0.0
 
-ENV PORT 3012
-ENV HOSTNAME "0.0.0.0"
-
-# Run database migrations and start the service
+# Run migrations and start service
 CMD ["sh", "-c", "if [ -d './prisma' ]; then npx prisma migrate deploy; fi && node dist/index.js"]

@@ -8,16 +8,17 @@ WORKDIR /app
 
 # Copy root package files
 COPY package*.json ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./   # Add pnpm workspace config
 COPY tsconfig.json ./
 
 # Copy entire workspace structure for proper workspace dependency resolution
 COPY shared/ ./shared/
 
 # Upgrade npm for workspace support
-RUN npm install -g npm@latest
+RUN npm install -g pnpm@latest
 
 # Install dependencies with workspace support
-RUN npm install --workspaces --omit=dev
+RUN pnpm install --frozen-lockfile --recursive
 
 # Build shared library
 FROM base AS builder
@@ -27,7 +28,7 @@ COPY shared/ ./shared/
 COPY tsconfig.json ./
 
 # Build the shared library
-RUN cd shared && npm run build
+RUN cd shared && pnpm run build
 
 # Production image for shared library
 FROM base AS runner

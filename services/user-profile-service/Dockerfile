@@ -1,70 +1,59 @@
 # Multi-stage build for user-profile-service
 FROM node:20-alpine AS base
 
-# Install dependencies only when needed
+# Dependencies stage
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy root package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy only package files first for caching
+COPY package.json pnpm-lock.yaml ./
+COPY services/user-profile-service/package*.json ./services/user-profile-service/
+COPY shared/package*.json ./shared/
 
-# Copy entire workspace structure for proper workspace dependency resolution
-COPY shared/ ./shared/
-COPY services/user-profile-service/ ./services/user-profile-service/
+# Install deps with workspace support
+RUN npm install -g pnpm@latest
+RUN pnpm install --frozen-lockfile --recursive
 
-# Upgrade npm for workspace support
-RUN npm install -g npm@latest
+# Copy source code
+COPY . .
 
-# Install dependencies with workspace support
-RUN npm install --workspaces --omit=dev
+# Build shared lib
+RUN cd shared && pnpm build
 
-# Build shared library
-FROM base AS shared-builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY shared/ ./shared/
-COPY tsconfig.json ./
-RUN cd shared && npm run build
+# Generate Prisma client
+RUN if [ -d "services/user-profile-service/prisma" ]; then \
+      cd services/user-profile-service && npx prisma generate; \
+    fi
 
-# Build user-profile-service
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=shared-builder /app/shared/dist ./shared/dist
-COPY services/user-profile-service/ ./services/user-profile-service/
-COPY tsconfig.json ./
+# Build service
+RUN cd services/user-profile-service && pnpm build
 
-# Generate Prisma client if prisma directory exists
-RUN if [ -d "services/user-profile-service/prisma" ]; then cd services/user-profile-service && npx prisma generate; fi
-
-# Build the service
-RUN cd services/user-profile-service && npm run build
-
-# Production image
+# ---- Runner ----
 FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV production
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 user-profile-service
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 user-profile-service
 
-# Copy the built application
-COPY --from=builder --chown=user-profile-service:nodejs /app/services/user-profile-service/dist ./dist
-COPY --from=builder --chown=user-profile-service:nodejs /app/services/user-profile-service/package*.json ./
-COPY --from=deps --chown=user-profile-service:nodejs /app/node_modules ./node_modules
+# Copy only what we need
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/shared/dist ./shared/dist
+COPY --from=deps /app/services/user-profile-service/package*.json ./
+COPY --from=deps /app/services/user-profile-service/prisma ./prisma
+COPY --from=deps /app/services/user-profile-service/dist ./dist
 
-# Copy Prisma files if they exist
-RUN if [ -d "/app/services/user-profile-service/prisma" ]; then       cp -r /app/services/user-profile-service/prisma ./prisma;     fi
+# Remove dev dependencies
+RUN pnpm prune --prod
 
 USER user-profile-service
 
-EXPOSE 3005
+EXPOSE 8000
+ENV PORT=8000
+ENV HOSTNAME=0.0.0.0
 
-ENV PORT 3005
-ENV HOSTNAME "0.0.0.0"
-
-# Run database migrations and start the service
-CMD ["sh", "-c", "if [ -d './prisma' ]; then npx prisma migrate deploy; fi && node dist/index.js"]
+# Start service (migrations recommended to run outside container)
+CMD ["node", "dist/index.js"]

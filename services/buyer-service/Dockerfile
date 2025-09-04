@@ -14,11 +14,11 @@ COPY tsconfig.json ./
 COPY shared/ ./shared/
 COPY services/buyer-service/ ./services/buyer-service/
 
-# Upgrade npm for workspace support
-RUN npm install -g npm@latest
+# Upgrade pnpm for workspace support
+RUN npm install -g pnpm@latest
 
 # Install dependencies with workspace support
-RUN npm install --workspaces --omit=dev
+RUN pnpm install --frozen-lockfile --recursive
 
 # Build shared library
 FROM base AS shared-builder
@@ -26,7 +26,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY shared/ ./shared/
 COPY tsconfig.json ./
-RUN cd shared && npm run build
+RUN cd shared && pnpm run build
 
 # Build buyer-service
 FROM base AS builder
@@ -40,7 +40,7 @@ COPY tsconfig.json ./
 RUN if [ -d "services/buyer-service/prisma" ]; then cd services/buyer-service && npx prisma generate; fi
 
 # Build the service
-RUN cd services/buyer-service && npm run build
+RUN cd services/buyer-service && pnpm run build
 
 # Production image
 FROM base AS runner
@@ -57,14 +57,15 @@ COPY --from=builder --chown=buyer-service:nodejs /app/services/buyer-service/pac
 COPY --from=deps --chown=buyer-service:nodejs /app/node_modules ./node_modules
 
 # Copy Prisma files if they exist
-RUN if [ -d "/app/services/buyer-service/prisma" ]; then       cp -r /app/services/buyer-service/prisma ./prisma;     fi
+RUN if [ -d "/app/services/buyer-service/prisma" ]; then \
+      cp -r /app/services/buyer-service/prisma ./prisma; \
+    fi
 
 USER buyer-service
 
-EXPOSE 8001
-
-ENV PORT 8001
+EXPOSE 8023
+ENV PORT 8023
 ENV HOSTNAME "0.0.0.0"
 
 # Run database migrations and start the service
-CMD ["sh", "-c", "if [ -d './prisma' ]; then npx prisma migrate deploy; fi && node dist/index.js"]
+CMD ["sh", "-c", "if [ -d './prisma' ]; then npx prisma migrate deploy; fi && node ./dist/index.js"]
