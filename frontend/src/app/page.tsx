@@ -27,7 +27,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { EnquiryForm } from "@/components/enquiry-form";
-import Navbar from "@/components/navbar/navbar";
+import Navbar from "@/components/navigation/enhanced-navbar";
 
 export default function MSMEBazaarLanding() {
   return (

@@ -13,6 +13,7 @@ import { Building2, ArrowRight, ArrowLeft, Upload, FileText, Target, DollarSign,
 import Link from "next/link"
 
 import PaymentCheckout from '@/modules/payment/PaymentCheckout'
+import { kycApi } from '@/services/kyc.api'
 
 type Step = 1 | 2 | 3 | 'payment' | 'success'
 

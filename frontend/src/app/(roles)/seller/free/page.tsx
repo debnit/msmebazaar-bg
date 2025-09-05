@@ -1,6 +1,6 @@
 "use client";
 
-import RoleGuard from "@/modules/shared/RoleGuard";
+import { RoleRoute } from "@/components/route-wrapper";
 import { useSellerProfile, useSellerListings, useInquiries, useBasicAnalytics } from "@/services/seller.api";
 import { FEATURE_ROUTES } from "@/utils/routes";
 
@@ -11,7 +11,7 @@ export default function SellerFreePage() {
   const { data: analytics } = useBasicAnalytics();
 
   return (
-    <RoleGuard allowedRoles={["seller"]}>
+    <RoleRoute allowedRoles={["seller"]}>
       <section className="space-y-6">
         <h1 className="text-2xl font-bold">Seller Dashboard (Free)</h1>
         
@@ -108,6 +108,6 @@ export default function SellerFreePage() {
           </p>
         </div>
       </section>
-    </RoleGuard>
+    </RoleRoute>
   );
 }

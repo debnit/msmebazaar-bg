@@ -1,7 +1,7 @@
 // src/app/(roles)/buyer/free/page.tsx
 "use client";
 
-import RoleGuard from "@/modules/shared/RoleGuard";
+import { RoleRoute } from "@/components/route-wrapper";
 import { useEffect, useState } from "react";
 import { useBrowseListings, useBuyerProfile } from "@/services/buyer.api";
 import type { MSMEListing } from "@/services/buyer.api";
@@ -12,7 +12,7 @@ export default function BuyerFreePage() {
   const { data: listings, isLoading, error } = useBrowseListings();
 
   return (
-    <RoleGuard allowedRoles={["buyer"]}>
+    <RoleRoute allowedRoles={["buyer"]}>
       <section className="space-y-4">
         <h1 className="text-2xl font-bold">Buyer Dashboard (Free)</h1>
         
@@ -69,6 +69,6 @@ export default function BuyerFreePage() {
           </p>
         </div>
       </section>
-    </RoleGuard>
+    </RoleRoute>
   );
 }

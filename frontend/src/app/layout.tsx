@@ -7,6 +7,10 @@ import { AuthProvider } from "@/components/providers/auth-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { ErrorBoundary } from "@/components/error-boundary"
+import { RoutePreloader } from "@/components/route-preloader"
+import { PageTransition } from "@/components/navigation/smooth-transition"
+import { NavigationProvider } from "@/contexts/navigation-context"
+import { LoadingBar } from "@/components/navigation/loading-bar"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -43,7 +47,16 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
             <QueryProvider>
               <AuthProvider>
-                <div className="min-h-screen bg-background font-sans antialiased">{children}</div>
+                <NavigationProvider>
+                  <LoadingBar />
+                  <RoutePreloader>
+                    <PageTransition>
+                      <div className="min-h-screen bg-background font-sans antialiased">
+                        {children}
+                      </div>
+                    </PageTransition>
+                  </RoutePreloader>
+                </NavigationProvider>
                 <Toaster />
               </AuthProvider>
             </QueryProvider>
