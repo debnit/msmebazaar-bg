@@ -52,6 +52,19 @@ class AuthApiService {
     }
     return resp
   }
+  
+  // OAuth methods
+  getOAuthUrl(provider: string) {
+    return api.auth.getOAuthUrl(provider);
+  }
+  
+  oauthLogin(provider: string, code: string) {
+    return api.auth.oauthLogin(provider, code);
+  }
+  
+  oauthRegister(provider: string, code: string, userData: any) {
+    return api.auth.oauthRegister(provider, code, userData);
+  }
 
   async refreshToken() {
     const refreshToken = TokenManager.getRefreshToken()
@@ -154,6 +167,37 @@ export function useRegister() {
     },
   })
 }
+
+// OAuth hooks
+export const useGetOAuthUrl = () => {
+  return useMutation({
+    mutationFn: (provider: string) => authApiService.getOAuthUrl(provider),
+  });
+};
+
+export const useOAuthLogin = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ provider, code }: { provider: string; code: string }) => 
+      authApiService.oauthLogin(provider, code),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+    },
+  });
+};
+
+export const useOAuthRegister = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ provider, code, userData }: { provider: string; code: string; userData: any }) => 
+      authApiService.oauthRegister(provider, code, userData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+    },
+  });
+};
 
 export function useLogout() {
   const queryClient = useQueryClient()

@@ -77,6 +77,19 @@ router.use('/verify-email', createProxyMiddleware(
   createProxyConfig({ '^/verify-email': '/auth/verify-email' }, 'verify-email')
 ));
 
+// OAuth routes
+router.use('/oauth/:provider', createProxyMiddleware(
+  createProxyConfig({ '^/oauth/(.*)': '/auth/oauth/$1' }, 'oauth-provider')
+));
+
+router.use('/oauth/:provider/callback', createProxyMiddleware(
+  createProxyConfig({ '^/oauth/(.*)': '/auth/oauth/$1' }, 'oauth-callback')
+));
+
+router.use('/oauth/:provider/register', createProxyMiddleware(
+  createProxyConfig({ '^/oauth/(.*)': '/auth/oauth/$1' }, 'oauth-register')
+));
+
 // Protected routes (require JWT)
 router.use('/profile',
   jwtMw(Config["jwtSecret"], true),
@@ -136,6 +149,19 @@ router.use('/health', createProxyMiddleware({
     }
   }
 }));
+
+// OAuth routes
+router.use('/oauth/:provider', createProxyMiddleware(
+  createProxyConfig({ '^/oauth/(.*)': '/auth/oauth/$1' }, 'oauth-provider')
+));
+
+router.use('/oauth/:provider/callback', createProxyMiddleware(
+  createProxyConfig({ '^/oauth/(.*)': '/auth/oauth/$1' }, 'oauth-callback')
+));
+
+router.use('/oauth/:provider/register', createProxyMiddleware(
+  createProxyConfig({ '^/oauth/(.*)': '/auth/oauth/$1' }, 'oauth-register')
+));
 
 // Catch-all for unmatched auth routes
 router.use((req, res) => {

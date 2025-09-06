@@ -303,6 +303,9 @@ export const api = {
   auth: {
     login: (c: { email: string; password: string }) => apiClient.post("/auth/login", c),
     register: (d: any) => apiClient.post("/auth/register", d),
+    oauthLogin: (provider: string, code: string) => apiClient.post(`/auth/oauth/${provider}/callback`, { code }),
+    oauthRegister: (provider: string, code: string, userData?: any) => apiClient.post(`/auth/oauth/${provider}/register`, { code, ...userData }),
+    getOAuthUrl: (provider: string) => apiClient.get(`/auth/oauth/${provider}`),
     logout: () => apiClient.post("/auth/logout"),
     refreshToken: (data: { refreshToken: string }) => apiClient.post("/auth/refresh", data),
     forgotPassword: (email: string) => apiClient.post("/auth/forgot-password", { email }),

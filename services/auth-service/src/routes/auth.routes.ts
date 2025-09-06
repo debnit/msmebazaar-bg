@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as authController from '../controllers/auth.controller';
+import * as oauthController from '../controllers/oauth.controller';
 import { validateBody } from '@msmebazaar/shared/middleware/validation.middleware';
 import { 
   registerSchema, 
@@ -52,6 +53,17 @@ router.post(
   '/verify-email',
   validateBody(verifyEmailSchema),
   authController.verifyEmail
+);
+
+// OAuth routes
+router.get(
+  '/oauth/:provider',
+  oauthController.generateOAuthUrl
+);
+
+router.get(
+  '/oauth/callback/:provider',
+  oauthController.handleOAuthCallback
 );
 
 // Protected routes
